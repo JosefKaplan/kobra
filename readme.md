@@ -1,5 +1,5 @@
-# Core System – Nette Framework
-  
+# Kobra – Nette Framework
+
 Robustní základ pro webové aplikace postavený na Nette frameworku s Doctrine ORM.
 Aplikace poskytuje core funkcionalitu pro správu uživatelů, registraci a přihlašování.
 
@@ -10,7 +10,7 @@ Aplikace poskytuje core funkcionalitu pro správu uživatelů, registraci a při
 | Požadavek | Verze |
 |-----------|-------|
 | PHP       | ≥ 8.2 |
-| MySQL     | ≥ 8.0 |
+| MariaDB   | ≥ 10.6 (doporučeno 10.11 LTS); MySQL 8 rovněž funguje |
 | Composer  | ≥ 2.x |
 | Node.js   | ≥ 18 *(nutné pro sestavení frontend assets)* |
 
@@ -37,18 +37,28 @@ Výchozí nastavení:
 parameters:
     database:
         host: localhost
-        name: system26
+        name: kobra
         user: root
         password: 'root'
+        serverVersion: '10.11.11-MariaDB'   # musí odpovídat reálné verzi serveru (SELECT VERSION())
 ```
 
-> Pokud vaše MySQL běží s jiným heslem nebo na jiném portu, upravte tyto hodnoty.
+> Pokud vaše databáze běží s jiným heslem, portem nebo verzí, upravte tyto hodnoty
+> (nejlépe v `config/local.neon` – viz `config/local.neon.example`).
+> Pro lokální vývoj proti MySQL 8 nastavte `serverVersion: '8.0'`.
+
+**macOS + Homebrew, když chceš vyvíjet proti reálné MariaDB vedle nativního `mysql`:**
+`brew services start mariadb@10.11` nepoužívat — formule má natvrdo stejný datadir/port
+jako formule `mysql` (kolize dat). Místo toho `bin/mariadb-dev start|stop|status` — spustí
+Homebrew MariaDB 10.11 na vlastním datadiru a portu `33061`, nezávisle na `mysql`
+(obojí může běžet zároveň, není třeba nic vypínat). Pak v `config/local.neon`:
+`host: 127.0.0.1`, `port: 33061`, `serverVersion: '10.11.19-MariaDB'` (ověř `SELECT VERSION();`).
 
 #### a) Pomocí Doctrine Migrations (doporučeno)
 
 ```bash
-# Vytvoření prázdné databáze (pokud ještě neexistuje)
-mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS system26 CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# Vytvoření prázdné databáze (pokud ještě neexistuje) – klient `mysql` funguje i pro MariaDB
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS kobra CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
 # Spuštění migrací (včetně vytvoření tabulek a vložení výchozích dat)
 php bin/console migrations:migrate --no-interaction
@@ -87,9 +97,10 @@ s přepisem databázových parametrů):
 parameters:
     database:
         host: <db-server>
-        name: system26
+        name: kobra
         user: <db-uzivatel>
         password: '<db-heslo>'
+        serverVersion: '10.11.11-MariaDB'   # reálná verze DB serveru
 ```
 
 Spusťte migrace:
@@ -144,6 +155,11 @@ Ujistěte se, že webserver má právo zápisu do složek:
 ```bash
 chmod -R 775 temp/ log/
 ```
+
+> `temp/sessions/` je v repu (jen `.gitkeep`, obsah ignorován) – Nette tuhle složku
+> sama nevytvoří, PHP session handler jen selže hláškou "Failed to read session data",
+> pokud neexistuje nebo do ní není zápis. Po klonu/kopii repa proto vždy zkontroluj,
+> že `temp/sessions/` existuje a je zapisovatelná (řeší i `chmod` výše).
 
 ### 6. Produkční režim
 
@@ -203,7 +219,6 @@ Po spuštění migrací jsou k dispozici:
 | Uživatel | Heslo     | Role  |
 |----------|-----------|-------|
 | `admin`  | `Admin123` | admin |
-| `user1`  | `Admin123` | user  |
 
 ---
 

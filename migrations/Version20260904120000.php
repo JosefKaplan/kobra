@@ -8,22 +8,26 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * Baseline migration — the complete schema in one pass, plus the default users.
+ * Kobra baseline schema — the complete schema in one pass, plus the default users.
  *
- * This is a rollup of the original 13 migrations (Version20260604000000 …
- * Version20260709160000); the incremental history, including the data conversions
- * for component types that no longer exist (two_cols_text, nav, footer), lives
- * only in git now. Existing databases were synced via `migrations:rollup`.
+ * Written for MariaDB (deployment target, 10.6+ / 10.11 LTS). Notes:
+ *  - Booleans are TINYINT(1) everywhere (Doctrine's `boolean` type), so
+ *    `orm:validate-schema` stays clean.
+ *  - `content` columns are native JSON. On MariaDB 10.4.3+ `JSON` is a LONGTEXT
+ *    alias with a `json_valid()` CHECK; Doctrine DBAL's MariaDBPlatform emits and
+ *    introspects it as JSON, so this matches the `#[ORM\Column(type: 'json')]`
+ *    mapping without a schema diff.
+ *  - Every table is explicitly InnoDB / utf8mb4 / utf8mb4_unicode_ci.
  *
- * Audit columns are deliberately ordered in pairs (created_date/created_by,
- * edited_date/edited_by, deleted_date/deleted_by) to keep the tables readable.
+ * This squashes the previous MySQL-8 baseline (Version20260709170000) and the two
+ * spacing_top / spacing_bottom follow-ups; that history lives in git only.
  */
-final class Version20260709170000 extends AbstractMigration
+final class Version20260904120000 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'Baseline schema: users, login_logs, pages, page_components, settings, '
-            . 'layout_blocks, menus, layout_block_menus + default admin/user1 accounts';
+        return 'Kobra baseline (MariaDB): users, login_logs, pages, page_components, '
+            . 'settings, layout_blocks, menus, layout_block_menus + default admin account';
     }
 
     public function up(Schema $schema): void
@@ -74,7 +78,7 @@ final class Version20260709170000 extends AbstractMigration
                 INDEX IDX_B5D582BED6A509BC (edited_by),
                 INDEX IDX_B5D582BE1F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
-            ) DEFAULT CHARACTER SET utf8mb4
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE layout_blocks ADD CONSTRAINT FK_B5D582BEDE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE layout_blocks ADD CONSTRAINT FK_B5D582BED6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
@@ -85,7 +89,7 @@ final class Version20260709170000 extends AbstractMigration
                 id INT AUTO_INCREMENT NOT NULL,
                 title VARCHAR(255) NOT NULL,
                 link VARCHAR(255) NOT NULL,
-                is_visible TINYINT DEFAULT 1 NOT NULL,
+                is_visible TINYINT(1) DEFAULT 1 NOT NULL,
                 nav_block_id INT DEFAULT NULL,
                 footer_block_id INT DEFAULT NULL,
                 created_date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -101,7 +105,7 @@ final class Version20260709170000 extends AbstractMigration
                 INDEX IDX_2074E575D6A509BC (edited_by),
                 INDEX IDX_2074E5751F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
-            ) DEFAULT CHARACTER SET utf8mb4
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE pages ADD CONSTRAINT FK_2074E575F19F169C FOREIGN KEY (nav_block_id) REFERENCES layout_blocks (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE pages ADD CONSTRAINT FK_2074E575918AA0D4 FOREIGN KEY (footer_block_id) REFERENCES layout_blocks (id) ON DELETE SET NULL');
@@ -115,7 +119,9 @@ final class Version20260709170000 extends AbstractMigration
                 type VARCHAR(50) NOT NULL,
                 content JSON NOT NULL,
                 sort_order INT DEFAULT 0 NOT NULL,
-                is_visible TINYINT DEFAULT 1 NOT NULL,
+                is_visible TINYINT(1) DEFAULT 1 NOT NULL,
+                spacing_top VARCHAR(10) DEFAULT NULL,
+                spacing_bottom VARCHAR(10) DEFAULT NULL,
                 page_id INT NOT NULL,
                 parent_id INT DEFAULT NULL,
                 created_date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -130,7 +136,7 @@ final class Version20260709170000 extends AbstractMigration
                 INDEX IDX_E5A8C463D6A509BC (edited_by),
                 INDEX IDX_E5A8C4631F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
-            ) DEFAULT CHARACTER SET utf8mb4
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463C4663E4 FOREIGN KEY (page_id) REFERENCES pages (id)');
         $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463727ACA70 FOREIGN KEY (parent_id) REFERENCES page_components (id) ON DELETE CASCADE');
@@ -153,7 +159,7 @@ final class Version20260709170000 extends AbstractMigration
                 INDEX IDX_727508CFD6A509BC (edited_by),
                 INDEX IDX_727508CF1F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
-            ) DEFAULT CHARACTER SET utf8mb4
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE menus ADD CONSTRAINT FK_727508CFDE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE menus ADD CONSTRAINT FK_727508CFD6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
@@ -166,7 +172,7 @@ final class Version20260709170000 extends AbstractMigration
                 INDEX IDX_F84CA861F79E0C3B (layout_block_id),
                 INDEX IDX_F84CA861CCD7E912 (menu_id),
                 PRIMARY KEY (layout_block_id, menu_id)
-            ) DEFAULT CHARACTER SET utf8mb4
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE layout_block_menus ADD CONSTRAINT FK_F84CA861F79E0C3B FOREIGN KEY (layout_block_id) REFERENCES layout_blocks (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE layout_block_menus ADD CONSTRAINT FK_F84CA861CCD7E912 FOREIGN KEY (menu_id) REFERENCES menus (id) ON DELETE CASCADE');
@@ -178,14 +184,13 @@ final class Version20260709170000 extends AbstractMigration
                 value LONGTEXT DEFAULT NULL,
                 UNIQUE INDEX UNIQ_E545A0C55E237E06 (name),
                 PRIMARY KEY (id)
-            ) DEFAULT CHARACTER SET utf8mb4
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
 
-        // Default accounts (both passwords: Admin123)
+        // Default account (password: Admin123 — change immediately after deploy)
         $this->addSql(<<<'SQL'
             INSERT INTO users (username, first_name, last_name, email, phone, password, role, is_active) VALUES
-            ('admin', 'Hlavní', 'Administrátor', 'admin@example.com', '+420123456789', '$2y$10$TDs.8sre4gMLG/6rGBPDJus6Wy.huo0TWUUaEGxdDLktprZOeF9hu', 'admin', 1),
-            ('user1', 'Pepa', 'Novák', 'pepa.novak@example.com', '+420987654321', '$2y$10$TDs.8sre4gMLG/6rGBPDJus6Wy.huo0TWUUaEGxdDLktprZOeF9hu', 'user', 1)
+            ('admin', 'Hlavní', 'Administrátor', 'admin@example.com', '+420123456789', '$2y$10$TDs.8sre4gMLG/6rGBPDJus6Wy.huo0TWUUaEGxdDLktprZOeF9hu', 'admin', 1)
             SQL);
     }
 

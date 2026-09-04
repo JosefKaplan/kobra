@@ -1,7 +1,7 @@
 {
-	"name": "nette/web-project",
-	"description": "Nette: Standard Web Project",
-	"keywords": ["nette"],
+	"name": "kobra/kobra",
+	"description": "Kobra – Nette web application (user management + small CMS)",
+	"keywords": ["nette", "kobra"],
 	"type": "project",
 	"license": ["MIT", "BSD-3-Clause", "GPL-2.0-only", "GPL-3.0-only"],
 	"require": {

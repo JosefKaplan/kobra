@@ -1,20 +1,24 @@
+{varType App\Entity\Page $page}
+{varType App\Helpers\FlashMessage[] $flashes}
+{varType App\Entity\LayoutBlock $navBlock}
+
 <!DOCTYPE html>
 <html lang="cs">
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>{ifset title}{include title|stripHtml} | {/ifset}Core System</title>
+	<title>{ifset title}{include title|stripHtml} | {/ifset}Kobra</title>
 	{asset 'front.js'}
 </head>
 <body>
 
 	{* The navbar exists only when the displayed CMS page has a nav block assigned —
 	   there is no default menu and nothing hints at the admin section or login. *}
-	{var $navBlock = ($page ?? null)?->getNavBlock()}
+	{var $navBlock = isset($page) ? $page->getNavBlock() : null}
 	<nav n:if="$navBlock !== null" class="navbar navbar-expand-md bg-white shadow-sm">
 		<div class="container">
 			{var $navBrand = trim($navBlock->getContent()['brand'] ?? '')}
-			<a class="navbar-brand text-primary" n:href=":Front:Home:default">{$navBrand !== '' ? $navBrand : 'Core System'}</a>
+			<a class="navbar-brand text-primary" n:href=":Front:Home:default">{$navBrand !== '' ? $navBrand : 'Kobra'}</a>
 			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
 			        aria-controls="mainNav" aria-expanded="false" aria-label="Přepnout navigaci">
 				<span class="navbar-toggler-icon"></span>
@@ -33,6 +37,7 @@
 					{/foreach}
 					{* Assigned menus become dropdowns, labelled with the menu name — same "Text | URL" line format inside *}
 					{foreach $navBlock->getActiveMenus() as $menu}
+						{varType App\Entity\Menu $menu}
 						<li class="nav-item dropdown">
 							<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
 								{$menu->getName()}
@@ -55,10 +60,16 @@
 
 	<main class="py-5">
 		<div class="container">
-			<div n:foreach="$flashes as $flash" class="alert alert-{$flash->type} alert-dismissible fade show mb-4" role="alert">
-				{$flash->message}
-				<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-			</div>
+			{foreach $flashes as $flash}
+				{* Nette actually hands this over as plain stdClass ('message'/'type' set dynamically in
+				   Control::flashMessage()); App\Helpers\FlashMessage is a shape-only stand-in purely for
+				   {varType} IDE hints — it's never instantiated and has no effect on the compiled template. *}
+				{varType App\Helpers\FlashMessage $flash}
+				<div class="alert alert-{$flash->type} alert-dismissible fade show mb-4" role="alert">
+					{$flash->message}
+					<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+				</div>
+			{/foreach}
 
 			{include content}
 		</div>
@@ -66,7 +77,8 @@
 
 	{* The footer exists only when the displayed CMS page has a footer block assigned
 	   with non-empty content (sanitized rich text) — there is no default footer. *}
-	{var $footerText = trim(($page ?? null)?->getFooterBlock()?->getContent()['text'] ?? '')}
+	{var $footerBlock = isset($page) ? $page->getFooterBlock() : null}
+	{var $footerText = trim($footerBlock?->getContent()['text'] ?? '')}
 	<footer n:if="$footerText !== ''" class="py-4 border-top bg-white">
 		<div class="container small text-muted rich-text">{$footerText|noescape}</div>
 	</footer>

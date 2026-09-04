@@ -1,0 +1,31 @@
+# Machine-specific overrides for Kobra.
+# Copy to config/local.neon (gitignored) and edit. Bootstrap loads it automatically.
+#
+# After changing this file's *content*, delete temp/cache/nette.configurator/
+# — bin/console runs in non-debug mode and keeps the cached DI container otherwise.
+
+parameters:
+	database:
+		host: localhost
+		port: 3306   # e.g. 33061 for a Homebrew mariadb@10.11 instance kept off the default port
+		name: kobra
+		user: kobra
+		password: 'secret'
+
+		# Doctrine DBAL platform hint — MUST match the real server version.
+		# Find it with:  SELECT VERSION();
+		#
+		# MariaDB (deployment target). The '-MariaDB' suffix selects MariaDBPlatform:
+		serverVersion: '10.11.11-MariaDB'
+		#
+		# Oracle MySQL (only if you develop locally against MySQL instead of MariaDB —
+		# note modern MySQL reports versions like '9.6.0', not just '8.0'):
+		#serverVersion: '8.0'
+
+
+# The legacy Nette Database DSN in common.neon stays 'mysql:...' for MariaDB too —
+# MariaDB speaks the MySQL wire protocol and uses the pdo_mysql driver.
+
+# Enable the Tracy debug bar for a remote IP while setting up (optional):
+#tracy:
+#	email: you@example.com

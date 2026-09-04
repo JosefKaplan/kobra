@@ -128,8 +128,8 @@ class LayoutPresenter extends BasePresenter
 				->setHtmlAttribute('data-richtext');
 		} else {
 			$form->addText('brand', 'Značka v navigaci')
-				->setHtmlAttribute('placeholder', 'Core System')
-				->setOption('description', 'Text vlevo v navigaci (odkaz na úvod). Prázdné = „Core System“.');
+				->setHtmlAttribute('placeholder', 'Kobra')
+				->setOption('description', 'Text vlevo v navigaci (odkaz na úvod). Prázdné = „Kobra“.');
 			$form->addTextArea('content', 'Odkazy')
 				->setHtmlAttribute('rows', 6)
 				->setHtmlAttribute('class', 'font-monospace')

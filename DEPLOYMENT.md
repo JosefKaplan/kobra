@@ -1,6 +1,6 @@
 # Nasazení aplikace (deployment guide)
 
-Průvodce nasazením Core System (Nette 3, PHP ≥ 8.2, MySQL 8) na produkční/testovací hosting.
+Průvodce nasazením aplikace Kobra (Nette 3, PHP ≥ 8.2, MariaDB 10.6+) na produkční/testovací hosting.
 Stav k červenci 2026 — ceny a verze PHP u hostingů si před rozhodnutím ověř, mění se.
 
 ---
@@ -10,10 +10,10 @@ Stav k červenci 2026 — ceny a verze PHP u hostingů si před rozhodnutím ov�
 | Požadavek | Detail | Poznámka |
 |---|---|---|
 | PHP ≥ 8.2 | + rozšíření `pdo_mysql`, `mbstring`, `tokenizer`, `json`, `iconv` | běžná výbava každého hostingu |
-| MySQL 8 | databáze `system26` (název lze změnit v configu) | MariaDB by měla fungovat, ale netestováno — drž se MySQL |
+| MariaDB 10.6+ | databáze `kobra` (název lze změnit v configu); doporučeno 10.11 LTS | používá `pdo_mysql` a `mysql:` DSN – MariaDB mluví MySQL protokolem. Nastav `parameters.database.serverVersion` na reálnou verzi (`SELECT VERSION()`), např. `10.11.11-MariaDB` – suffix `-MariaDB` přepne Doctrine na MariaDBPlatform. MySQL 8 funguje taky (`serverVersion: '8.0'`). |
 | Apache + mod_rewrite | `www/.htaccess` už je připravený (front controller pattern) | nginx jde taky, ale vyžaduje vlastní konfiguraci |
 | Document root → `www/` | **jediný záludný bod na sdíleném hostingu** — viz krok 5.4 | kód aplikace (`app/`, `config/`, `vendor/`…) nesmí být veřejně dostupný |
-| Zapisovatelné `temp/` a `log/` | DI kontejner, cache Latte, Tracy logy | `chmod 777` (sdílený hosting) nebo `www-data` vlastník (VPS) |
+| Zapisovatelné `temp/` a `log/` | DI kontejner, cache Latte, Tracy logy, sessions | `chmod 777` (sdílený hosting) nebo `www-data` vlastník (VPS). `temp/sessions/` je v repu (`.gitkeep`) – Nette ji sama nezaloží, bez zápisu do ní shodí "Failed to read session data" |
 | Composer **lokálně** | `vendor/` (~44 MB) se buildí na tvém stroji a nahrává se | na serveru Composer potřeba není |
 | Node.js **lokálně** | `npm run build` → `www/assets/` se nahrává hotové | na serveru Node potřeba není — Vite je jen build tool |
 | CLI přístup k DB | migrace: `php bin/console migrations:migrate` | jde spustit i lokálně proti vzdálené DB (viz 5.5) — SSH není nutné |
@@ -55,7 +55,7 @@ Co Docker **nevyřeší**: nic z aktuálních potřeb. Aplikace nemá exotické 
 | Cena / měsíc | 12 USD (~280 Kč); 1. rok 60 USD | 30–70 Kč | ~100–150 Kč (Hetzner ~4–5 €), DO 6 USD |
 | Cena / rok | ~2 800 Kč (1. rok ~1 400) | ~400–850 Kč | ~1 200–1 700 Kč |
 | PHP | 7.4 / 8.0 / **8.2** — 8.2 je jejich strop | 8.1–8.4 dle tarifu | jakékoli |
-| MySQL | ano, i vzdálený přístup (Workbench) | ano, vzdálený přístup dle tarifu | vlastní instalace |
+| MySQL / MariaDB | ano, i vzdálený přístup (Workbench) | ano (většinou MariaDB), vzdálený přístup dle tarifu | vlastní instalace |
 | SSH | až po ověření účtu (screening) | většinou ne / za příplatek | ano, root |
 | Docroot na `www/` | nekonfigurovatelný → `.htaccess` workaround (5.4) | často nastavitelný v administraci | plná kontrola |
 | Správa serveru | žádná | žádná | **celá na tobě** (updaty, zálohy, firewall) |
@@ -64,7 +64,7 @@ Co Docker **nevyřeší**: nic z aktuálních potřeb. Aplikace nemá exotické 
 Poznámky:
 
 - **A (Porkbun):** funguje, ale pozor — aplikace vyžaduje PHP ≥ 8.2 a to je zároveň *nejvyšší* verze, kterou Porkbun nabízí. Nulová rezerva do budoucna (až nějaká závislost bude chtít 8.3+, jsi zaseklý). Paměťový limit 128 MB na Starter plánu stačí.
-- **B (český hosting):** nejlepší poměr cena/výkon pro tuhle aplikaci. Wedos NoLimit ~47 Kč/měs s DPH, Webglobe od ~29 Kč bez DPH, Forpsi podobně. Před objednávkou ověř: PHP ≥ 8.2, MySQL 8, možnost nastavit docroot nebo aspoň `.htaccess` rewrite, vzdálený přístup k DB (kvůli migracím).
+- **B (český hosting):** nejlepší poměr cena/výkon pro tuhle aplikaci. Wedos NoLimit ~47 Kč/měs s DPH, Webglobe od ~29 Kč bez DPH, Forpsi podobně. Před objednávkou ověř: PHP ≥ 8.2, MariaDB 10.6+ (nebo MySQL 8), možnost nastavit docroot nebo aspoň `.htaccess` rewrite, vzdálený přístup k DB (kvůli migracím).
 - **C (VPS):** kupuješ si svobodu za svůj čas. Pro jednu malou appku se nevyplatí, dokud tě sdílený hosting reálně neomezuje.
 
 **Doména:** může zůstat na Porkbunu bez ohledu na hosting — u varianty B/C jen změníš A záznam / nameservery. Porkbun je jako *registrátor* výborný a levný; drahý je jen jejich *hosting*.
@@ -86,11 +86,14 @@ npm ci
 npm run build
 ```
 
-**Důležité — verze PHP:** pokud máš lokálně novější PHP než 8.2, přidej do `composer.json`:
+**Důležité — verze PHP:** pokud máš lokálně novější PHP než 8.2, přidej klíč `config.platform.php`
+do stávajícího `composer.json` (je to jen fragment k vložení, ne samostatný JSON soubor):
 
-```json
-"config": {
-    "platform": { "php": "8.2" }
+```jsonc
+{
+    "config": {
+        "platform": { "php": "8.2" }
+    }
 }
 ```
 
@@ -100,16 +103,21 @@ Po buildu vrať dev závislosti pro lokální vývoj: `composer install`.
 
 ### 5.2 Produkční konfigurace
 
-Vytvoř **lokálně** soubor `config/local.neon` s údaji z administrace hostingu (Porkbun: sekce MySQL — hostname, database, user, password):
+Vytvoř **lokálně** soubor `config/local.neon` (šablona: `config/local.neon.example`) s údaji
+z administrace hostingu (sekce databáze — hostname, database, user, password, verze MariaDB):
 
 ```neon
 parameters:
 	database:
-		host: mysql-hostname-z-administrace
-		dbname: nazev_db
+		host: db-hostname-z-administrace
+		name: nazev_db
 		user: db_user
 		password: '***'
+		serverVersion: '10.11.11-MariaDB'   # reálná verze – v administraci hostingu nebo SELECT VERSION()
 ```
+
+Klíč je `name` (ne `dbname`). `serverVersion` musí sedět s reálnou verzí serveru, jinak
+Doctrine zvolí špatnou platformu a migrace/`orm:validate-schema` se rozejdou se schématem.
 
 Tento soubor je v `.gitignore` — na server ho nahraješ ručně přes SFTP, do gitu nikdy nepatří.
 
@@ -140,23 +148,23 @@ Nette vyžaduje, aby veřejný byl **jen** adresář `www/`. Na Porkbunu docroot
 
 **Varianta i — hosting umí nastavit docroot** (většina českých): nastav ho na `www/` a hotovo.
 
-**Varianta ii — docroot je fixní** (Porkbun): nahraj projekt do podadresáře (např. `core-system/`) a do kořene docrootu dej tento `.htaccess`:
+**Varianta ii — docroot je fixní** (Porkbun): nahraj projekt do podadresáře (např. `kobra/`) a do kořene docrootu dej tento `.htaccess`:
 
 ```apache
 <IfModule mod_rewrite.c>
 	RewriteEngine On
-	RewriteRule ^$ core-system/www/ [L]
-	RewriteRule (.*) core-system/www/$1 [L]
+	RewriteRule ^$ kobra/www/ [L]
+	RewriteRule (.*) kobra/www/$1 [L]
 </IfModule>
 ```
 
 `www/.htaccess` už blokuje přístup ke skrytým souborům; přesměrování zajistí, že se `app/`, `config/` atd. nikdy neservírují. Ověř po nasazení: `https://domena.cz/../config/common.neon` musí vrátit 403/404.
 
-Na Porkbunu jde alternativně nasměrovat subdoménu přímo na adresář — pro testovací nasazení klidně použij `test.domena.cz` → `core-system/www`.
+Na Porkbunu jde alternativně nasměrovat subdoménu přímo na adresář — pro testovací nasazení klidně použij `test.domena.cz` → `kobra/www`.
 
 ### 5.5 Databáze a migrace
 
-Porkbun (i řada českých hostingů) povoluje vzdálený přístup k MySQL, takže **SSH nepotřebuješ** — migrace spustíš z lokálu proti produkční DB:
+Porkbun (i řada českých hostingů) povoluje vzdálený přístup k databázi, takže **SSH nepotřebuješ** — migrace spustíš z lokálu proti produkční DB:
 
 ```bash
 # dočasně přepni config/local.neon na produkční DB údaje, pak:
@@ -165,14 +173,14 @@ php bin/console migrations:migrate --no-interaction
 # … a vrať local.neon zpět na lokální DB (a znovu smaž cache)
 ```
 
-Migrace zároveň naseeduje výchozí účty `admin`/`Admin123` a `user1`/`Admin123`.
+Migrace zároveň naseeduje výchozí účet `admin`/`Admin123`.
 
-Pokud hosting vzdálený přístup k DB nemá: exportuj lokální schéma (`mysqldump system26 > dump.sql` z čerstvě zmigrované lokální DB) a naimportuj přes phpMyAdmin hostingu.
+Pokud hosting vzdálený přístup k DB nemá: exportuj lokální schéma (`mysqldump kobra > dump.sql` z čerstvě zmigrované lokální DB; `mysqldump` funguje i pro MariaDB) a naimportuj přes phpMyAdmin hostingu.
 
 ### 5.6 Ověření a zabezpečení — hned po nasazení
 
 1. Otevři web — musí naběhnout homepage (fallback stránka, dokud v adminu nevybereš CMS homepage).
-2. Přihlas se na `/auth/login` a **okamžitě změň hesla výchozích účtů** (`admin`/`Admin123` je veřejně známé z README/gitu). Účet `user1` klidně smaž.
+2. Přihlas se na `/auth/login` a **okamžitě změň heslo výchozího účtu** (`admin`/`Admin123` je veřejně známé z README/gitu).
 3. Aktivuj SSL (Porkbun: free certifikát v administraci) a pak v `www/.htaccess` odkomentuj blok "Force usage of HTTPS".
 4. Zkontroluj, že chyby nechodí na obrazovku (zkus neexistující URL — má přijít hezká 404, ne Tracy bluescreen). Případné chyby padají do `log/`.
 5. Projdi admin: vytvoř stránku, přidej komponenty, ověř že se ukládají (test zápisu do DB i `temp/`).

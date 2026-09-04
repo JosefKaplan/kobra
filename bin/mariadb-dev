@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#
+# On-demand local MariaDB (Homebrew mariadb@10.11) for developing Kobra against the
+# real deployment engine, kept fully separate from the machine's native Homebrew
+# `mysql` service (used by other projects, e.g. system26) — different datadir, port
+# and socket, started manually instead of via `brew services` (whose default service
+# definition for mariadb@10.11 points at mysql's own datadir/port 3306 and would
+# collide with it).
+#
+# Usage: bin/mariadb-dev start|stop|status
+
+set -euo pipefail
+
+PREFIX="/opt/homebrew/opt/mariadb@10.11"
+DATADIR="/opt/homebrew/var/mariadb10.11"
+SOCK="/tmp/mariadb10.11.sock"
+PIDFILE="/tmp/mariadb10.11.pid"
+LOGFILE="/tmp/mariadb10.11.err"
+PORT=33061
+
+start() {
+	if [ -S "$SOCK" ] && "$PREFIX/bin/mysqladmin" --socket="$SOCK" ping >/dev/null 2>&1; then
+		echo "mariadb-dev already running on port $PORT"
+		return 0
+	fi
+	if [ ! -d "$DATADIR/mysql" ]; then
+		echo "Initializing datadir at $DATADIR ..."
+		mkdir -p "$DATADIR"
+		"$PREFIX/bin/mariadb-install-db" --datadir="$DATADIR" --auth-root-authentication-method=normal
+	fi
+	"$PREFIX/bin/mariadbd" \
+		--datadir="$DATADIR" \
+		--port="$PORT" \
+		--socket="$SOCK" \
+		--pid-file="$PIDFILE" \
+		--skip-networking=0 \
+		--log-error="$LOGFILE" &
+	disown
+	for _ in $(seq 1 20); do
+		sleep 0.5
+		if "$PREFIX/bin/mysqladmin" --socket="$SOCK" ping >/dev/null 2>&1; then
+			echo "mariadb-dev started on 127.0.0.1:$PORT (socket $SOCK)"
+			return 0
+		fi
+	done
+	echo "mariadb-dev did not come up in time — check $LOGFILE" >&2
+	exit 1
+}
+
+stop() {
+	if [ -f "$PIDFILE" ] && "$PREFIX/bin/mysqladmin" --socket="$SOCK" ping >/dev/null 2>&1; then
+		"$PREFIX/bin/mysqladmin" --socket="$SOCK" -u root shutdown
+		echo "mariadb-dev stopped"
+	else
+		echo "mariadb-dev is not running"
+	fi
+}
+
+status() {
+	if [ -S "$SOCK" ] && "$PREFIX/bin/mysqladmin" --socket="$SOCK" ping >/dev/null 2>&1; then
+		echo "mariadb-dev: running on 127.0.0.1:$PORT (socket $SOCK)"
+	else
+		echo "mariadb-dev: stopped"
+	fi
+}
+
+case "${1:-}" in
+	start) start ;;
+	stop) stop ;;
+	status) status ;;
+	*)
+		echo "Usage: $0 start|stop|status" >&2
+		exit 1
+		;;
+esac

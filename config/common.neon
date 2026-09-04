@@ -3,9 +3,17 @@
 parameters:
 	database:
 		host: localhost
-		name: system26
+		port: 3306
+		name: kobra
 		user: root
 		password: 'root'
+		# Doctrine DBAL platform hint — must match the real server.
+		# Deployment target is MariaDB; the '-MariaDB' suffix is what makes DBAL
+		# pick MariaDBPlatform instead of MySQLPlatform (JSON handling, DDL, …).
+		#   MariaDB:  '10.11.11-MariaDB'  (use the hoster's real version — SELECT VERSION())
+		#   MySQL 8:  '8.0'               (only if you develop locally against MySQL)
+		# Override in config/local.neon per environment.
+		serverVersion: '10.11.11-MariaDB'
 
 
 application:
@@ -16,7 +24,7 @@ application:
 
 # Legacy Nette Database (kept for backward compatibility with datagrid)
 database:
-	dsn: 'mysql:host=%database.host%;dbname=%database.name%;charset=utf8mb4'
+	dsn: 'mysql:host=%database.host%;port=%database.port%;dbname=%database.name%;charset=utf8mb4'
 	user: %database.user%
 	password: %database.password%
 	options:
@@ -57,11 +65,12 @@ dbal:
 		default:
 			driver: pdo_mysql
 			host: %database.host%
+			port: %database.port%
 			dbname: %database.name%
 			user: %database.user%
 			password: %database.password%
 			charset: utf8mb4
-			serverVersion: '8.0'
+			serverVersion: %database.serverVersion%
 
 
 # ── Doctrine ORM ─────────────────────────────────────────────────────────────

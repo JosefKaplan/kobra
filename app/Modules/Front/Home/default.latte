@@ -1,27 +1,37 @@
-{block title}{ifset $page}{$page->getTitle()}{else}Úvod{/ifset}{/block}
+{varType App\Entity\Page $page}
+
+{block title}
+    {ifset $page}
+        {$page->getTitle()}
+    {else}
+        Úvod
+    {/ifset}
+{/block}
 
 {block content}
-{ifset $page}
-	{* Admin-selected homepage (see Nastavení webu in the page administration) *}
-	{include '../components.latte', page: $page}
-{else}
-	<div class="page-hero mb-5">
-		<h1 class="display-5 mb-3">Vítejte v Core System</h1>
-		<p class="lead text-muted mb-4">Robustní základ pro webové aplikace postavený na Nette Frameworku.</p>
-	</div>
+    {ifset $page}
+        {* Admin-selected homepage (see Nastavení webu in the page administration) *}
+        {include '../components.latte', page: $page}
+    {else}
+        <div class="page-hero mb-5">
+            <h1 class="display-5 mb-3">Vítejte v aplikaci Kobra</h1>
+            <p class="lead text-muted mb-4">Robustní základ pro webové aplikace postavený na Nette Frameworku.</p>
+        </div>
 
-	<div n:if="count($navPages)">
-		<h2 class="h4 mb-3">Stránky</h2>
-		<div class="row g-4">
-			<div n:foreach="$navPages as $navPage" class="col-sm-6 col-lg-4">
-				<a n:href=":Front:Page:default $navPage->getLink()" class="card card-hover h-100 border-0 shadow-sm text-decoration-none">
-					<div class="card-body">
-						<h3 class="h5 card-title mb-1 text-body">{$navPage->getTitle()}</h3>
-						<span class="small text-muted">/{$navPage->getLink()}</span>
-					</div>
-				</a>
-			</div>
-		</div>
-	</div>
-{/ifset}
+        <div n:if="count($navPages)">
+            <h2 class="h4 mb-3">Stránky</h2>
+            <div class="row g-4">
+                <div n:foreach="$navPages as $navPage" class="col-sm-6 col-lg-4">
+                    {varType App\Entity\Page $navPage}
+                    <a n:href=":Front:Page:default $navPage->getLink()"
+                            class="card card-hover h-100 border-0 shadow-sm text-decoration-none">
+                        <div class="card-body">
+                            <h3 class="h5 card-title mb-1 text-body">{$navPage->getTitle()}</h3>
+                            <span class="small text-muted">/{$navPage->getLink()}</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    {/ifset}
 {/block}
