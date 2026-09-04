@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{ifset title}{include title|stripHtml} | {/ifset}Administrace</title>
+	{asset 'admin.js'}
+</head>
+<body>
+
+	<nav id="topbar" class="navbar navbar-dark px-3 d-flex align-items-center justify-content-between">
+		<a class="navbar-brand mb-0" href="{link :Admin:User:default}">
+			<i class="bi bi-gear-fill me-2"></i>Administrace
+		</a>
+		<div class="d-flex align-items-center gap-3">
+			<a class="text-light small text-decoration-none" href="{link :Front:Home:default}">
+				<i class="bi bi-box-arrow-up-right me-1"></i>Zobrazit web
+			</a>
+			{var $identity = $user->getIdentity()}
+			{varType Nette\Security\SimpleIdentity $identity}
+			<span class="text-light small">
+				{* SimpleIdentity exposes its data via magic property access, not ArrayAccess *}
+				<i class="bi bi-person-circle me-1"></i>{$identity->username ?? 'Uživatel'}
+			</span>
+			<a class="btn btn-outline-light btn-sm" href="{link :Front:Auth:logout}">
+				<i class="bi bi-box-arrow-right me-1"></i>Odhlásit
+			</a>
+		</div>
+	</nav>
+
+	<div id="wrapper">
+		<nav id="sidebar">
+			<div class="nav-section">Obsah</div>
+			<ul class="nav flex-column">
+				<li class="nav-item">
+					<a class="nav-link {if $presenter->isLinkCurrent('User:*')}active{/if}" n:href="User:default">
+						<i class="bi bi-people"></i> Uživatelé
+					</a>
+				</li>
+				<li class="nav-item" n:if="$user->isInRole('admin')">
+					<a class="nav-link {if $presenter->isLinkCurrent('Page:*')}active{/if}" n:href="Page:default">
+						<i class="bi bi-file-earmark-text"></i> Stránky
+					</a>
+				</li>
+				<li class="nav-item" n:if="$user->isInRole('admin')">
+					<a class="nav-link {if $presenter->isLinkCurrent('Layout:*')}active{/if}" n:href="Layout:default">
+						<i class="bi bi-layout-text-window-reverse"></i> Navigace a patičky
+					</a>
+				</li>
+				<li class="nav-item" n:if="$user->isInRole('admin')">
+					<a class="nav-link {if $presenter->isLinkCurrent('Menu:*')}active{/if}" n:href="Menu:default">
+						<i class="bi bi-list"></i> Menu
+					</a>
+				</li>
+			</ul>
+		</nav>
+
+		<div id="main" class="p-4">
+			{snippet flashes}
+				{foreach $flashes as $flash}
+					<div class="alert alert-{$flash->type} alert-dismissible fade show" role="alert">
+						{$flash->message}
+						<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+					</div>
+				{/foreach}
+			{/snippet}
+
+			{include content}
+		</div>
+	</div>
+
+</body>
+</html>

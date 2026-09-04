@@ -1,0 +1,121 @@
+{layout '../@layout.latte'}
+{import '_componentEditor.latte'}
+{varType App\Entity\Page $page}
+
+{block title}{$page->getTitle()}{/block}
+
+{block content}
+<div class="d-flex align-items-start justify-content-between mb-4">
+	<div>
+		<a n:href="default" class="btn btn-outline-secondary btn-sm mb-2">
+			<i class="bi bi-arrow-left me-1"></i>Zpět na seznam
+		</a>
+		<h1 class="h3 mb-0">
+			<i class="bi bi-pencil me-2 text-primary"></i>{$page->getTitle()}
+		</h1>
+	</div>
+</div>
+
+<div class="row g-4">
+
+	{* ── Settings sidebar ───────────────────────────────────────────── *}
+	<div class="col-lg-3">
+		<div class="card shadow-sm sticky-top" style="top: 1.5rem">
+			<div class="card-header fw-semibold">
+				<i class="bi bi-sliders me-1"></i>Nastavení stránky
+			</div>
+			<div class="card-body">
+				{control pageForm}
+				<hr>
+				<div class="small text-muted">
+					<div>
+						<i class="bi bi-plus-circle me-1"></i>Vytvořeno {$page->getCreatedDate()|date:'j. n. Y H:i'}{if $page->getCreatedBy()} — {$page->getCreatedBy()->getUsername()}{/if}
+					</div>
+					<div n:if="$page->getEditedDate()">
+						<i class="bi bi-pencil me-1"></i>Upraveno {$page->getEditedDate()|date:'j. n. Y H:i'}{if $page->getEditedBy()} — {$page->getEditedBy()->getUsername()}{/if}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{* ── Components area ────────────────────────────────────────────── *}
+	<div class="col-lg-9">
+
+		<div class="d-flex align-items-center justify-content-between mb-3">
+			<h5 class="mb-0 fw-semibold">Komponenty stránky</h5>
+			<div class="dropdown">
+				<button class="btn btn-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+					<i class="bi bi-plus-lg me-1"></i>Přidat blok
+				</button>
+				<ul class="dropdown-menu dropdown-menu-end">
+					<li><h6 class="dropdown-header small text-muted">Vyberte typ bloku</h6></li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'hero'">
+							<i class="bi bi-image me-2 text-primary"></i>Hero sekce
+							<small class="d-block text-muted ms-4">Nadpis, podnadpis, tlačítko</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'heading'">
+							<i class="bi bi-type-h2 me-2 text-info"></i>Nadpis
+							<small class="d-block text-muted ms-4">Samostatný nadpis s úrovní a zarovnáním</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'text_block'">
+							<i class="bi bi-text-paragraph me-2 text-secondary"></i>Textový blok
+							<small class="d-block text-muted ms-4">Odstavec nebo delší text</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'image'">
+							<i class="bi bi-card-image me-2 text-orange"></i>Obrázek
+							<small class="d-block text-muted ms-4">Obrázek z URL adresy, s popiskem</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'columns'">
+							<i class="bi bi-layout-three-columns me-2 text-purple"></i>Sloupce
+							<small class="d-block text-muted ms-4">Řada sloupců — každý sloupec je samostatný blok</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'cta'">
+							<i class="bi bi-megaphone me-2 text-success"></i>CTA blok
+							<small class="d-block text-muted ms-4">Výzva k akci s tlačítkem</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'contact_form'">
+							<i class="bi bi-envelope-paper me-2 text-teal"></i>Kontaktní formulář
+							<small class="d-block text-muted ms-4">E-mail a zpráva odeslané na externí adresu</small>
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+
+		{var $rootComponents = $page->getRootComponents()}
+
+		{foreach $rootComponents as $component}
+			{varType App\Entity\PageComponent $component}
+			<div id="component-{$component->getId()}" class="card shadow-sm mb-3 component-card" data-type="{$component->getType()}">
+				<div class="card-header d-flex align-items-center justify-content-between py-2">
+					{include componentHeader, component: $component, first: $iterator->first, last: $iterator->last, counter: $iterator->counter}
+				</div>
+				<div class="card-body">
+					{include componentForm, component: $component}
+				</div>
+			</div>
+		{/foreach}
+
+		<div n:if="!count($rootComponents)" class="text-center py-5 text-muted border rounded-3 bg-light">
+			<i class="bi bi-layout-text-sidebar-reverse fs-1 d-block mb-2 opacity-25"></i>
+			<p class="mb-0">Tato stránka zatím nemá žádné komponenty.</p>
+			<p class="small">Přidejte první pomocí tlačítka <strong>Přidat blok</strong> výše.</p>
+		</div>
+
+	</div>
+</div>
+{/block}

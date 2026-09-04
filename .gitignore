@@ -1,0 +1,19 @@
+/vendor/
+/node_modules/
+/www/assets/
+/config/local.neon
+/temp/cache/
+/temp/sessions/
+/log/*.log
+/log/\*.html
+composer.phar
+
+# IDE
+/.idea/
+/.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

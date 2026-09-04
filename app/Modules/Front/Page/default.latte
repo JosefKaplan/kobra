@@ -1,0 +1,7 @@
+{varType App\Entity\Page $page}
+
+{block title}{$page->getTitle()}{/block}
+
+{block content}
+{include '../components.latte', page: $page}
+{/block}

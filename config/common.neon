@@ -1,0 +1,83 @@
+# see https://doc.nette.org/en/configuring
+
+parameters:
+	database:
+		host: localhost
+		name: system26
+		user: root
+		password: 'root'
+
+
+application:
+	mapping:
+		Front: App\Modules\Front\**Presenter
+		Admin: App\Modules\Admin\**Presenter
+
+
+# Legacy Nette Database (kept for backward compatibility with datagrid)
+database:
+	dsn: 'mysql:host=%database.host%;dbname=%database.name%;charset=utf8mb4'
+	user: %database.user%
+	password: %database.password%
+	options:
+		lazy: true
+
+
+session:
+	savePath: %tempDir%/sessions
+	expiration: 14 days
+
+
+assets:
+	mapping:
+		default:
+			type: vite
+			path: assets
+
+
+latte:
+	strictParsing: yes
+
+
+di:
+	export:
+		parameters: no
+		tags: no
+
+
+# ── Doctrine DBAL ────────────────────────────────────────────────────────────
+extensions:
+	dbal: Nettrine\DBAL\DI\DbalExtension
+	orm: Nettrine\ORM\DI\OrmExtension
+	migrations: Nettrine\Migrations\DI\MigrationsExtension
+
+
+dbal:
+	connections:
+		default:
+			driver: pdo_mysql
+			host: %database.host%
+			dbname: %database.name%
+			user: %database.user%
+			password: %database.password%
+			charset: utf8mb4
+			serverVersion: '8.0'
+
+
+# ── Doctrine ORM ─────────────────────────────────────────────────────────────
+orm:
+	managers:
+		default:
+			connection: default
+			mapping:
+				App\Entity:
+					type: attributes
+					directories: [%appDir%/Entity]
+					namespace: App\Entity
+
+
+# ── Doctrine Migrations ──────────────────────────────────────────────────────
+migrations:
+	directories:
+		App\Migrations: %appDir%/../migrations
+	table: doctrine_migrations

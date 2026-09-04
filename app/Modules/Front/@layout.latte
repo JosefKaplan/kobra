@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{ifset title}{include title|stripHtml} | {/ifset}Core System</title>
+	{asset 'front.js'}
+</head>
+<body>
+
+	{* The navbar exists only when the displayed CMS page has a nav block assigned —
+	   there is no default menu and nothing hints at the admin section or login. *}
+	{var $navBlock = ($page ?? null)?->getNavBlock()}
+	<nav n:if="$navBlock !== null" class="navbar navbar-expand-md bg-white shadow-sm">
+		<div class="container">
+			{var $navBrand = trim($navBlock->getContent()['brand'] ?? '')}
+			<a class="navbar-brand text-primary" n:href=":Front:Home:default">{$navBrand !== '' ? $navBrand : 'Core System'}</a>
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+			        aria-controls="mainNav" aria-expanded="false" aria-label="Přepnout navigaci">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div id="mainNav" class="collapse navbar-collapse">
+				<ul class="navbar-nav me-auto">
+					{* One "Text | URL" link per line *}
+					{foreach explode("\n", $navBlock->getContent()['links'] ?? '') as $navLine}
+						{var $navParts = explode('|', $navLine, 2)}
+						{var $navLabel = trim($navParts[0])}
+						{var $navUrl = trim($navParts[1] ?? '')}
+						{continueIf $navLabel === '' || $navUrl === ''}
+						<li class="nav-item">
+							<a class="nav-link" href="{$navUrl}">{$navLabel}</a>
+						</li>
+					{/foreach}
+					{* Assigned menus become dropdowns, labelled with the menu name — same "Text | URL" line format inside *}
+					{foreach $navBlock->getActiveMenus() as $menu}
+						<li class="nav-item dropdown">
+							<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+								{$menu->getName()}
+							</a>
+							<ul class="dropdown-menu">
+								{foreach explode("\n", $menu->getContent()['links'] ?? '') as $menuLine}
+									{var $menuParts = explode('|', $menuLine, 2)}
+									{var $menuLabel = trim($menuParts[0])}
+									{var $menuUrl = trim($menuParts[1] ?? '')}
+									{continueIf $menuLabel === '' || $menuUrl === ''}
+									<li><a class="dropdown-item" href="{$menuUrl}">{$menuLabel}</a></li>
+								{/foreach}
+							</ul>
+						</li>
+					{/foreach}
+				</ul>
+			</div>
+		</div>
+	</nav>
+
+	<main class="py-5">
+		<div class="container">
+			<div n:foreach="$flashes as $flash" class="alert alert-{$flash->type} alert-dismissible fade show mb-4" role="alert">
+				{$flash->message}
+				<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+			</div>
+
+			{include content}
+		</div>
+	</main>
+
+	{* The footer exists only when the displayed CMS page has a footer block assigned
+	   with non-empty content (sanitized rich text) — there is no default footer. *}
+	{var $footerText = trim(($page ?? null)?->getFooterBlock()?->getContent()['text'] ?? '')}
+	<footer n:if="$footerText !== ''" class="py-4 border-top bg-white">
+		<div class="container small text-muted rich-text">{$footerText|noescape}</div>
+	</footer>
+
+</body>
+</html>

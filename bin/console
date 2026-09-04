@@ -1,0 +1,22 @@
+#!/usr/bin/env php
+<?php
+declare(strict_types=1);
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$bootstrap = new App\Bootstrap();
+$container = $bootstrap->bootWebApplication();
+
+use Symfony\Component\Console\Application;
+
+$application = new Application('Nettrine Console');
+
+// Find all command services in the container by type
+$commandNames = $container->findByType('Symfony\Component\Console\Command\Command');
+
+foreach ($commandNames as $serviceName) {
+	$command = $container->getService($serviceName);
+	$application->add($command);
+}
+
+$application->run();

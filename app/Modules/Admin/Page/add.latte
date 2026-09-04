@@ -1,0 +1,20 @@
+{layout '../@layout.latte'}
+
+{block title}Nová stránka{/block}
+
+{block content}
+<div class="mb-4">
+    <a n:href="default" class="btn btn-outline-secondary btn-sm mb-3">
+        <i class="bi bi-arrow-left me-1"></i>Zpět na seznam
+    </a>
+	<h1 class="h3 mb-0">
+		<i class="bi bi-plus-lg me-2 text-primary"></i>Nová stránka
+	</h1>
+</div>
+
+<div class="card shadow-sm">
+	<div class="card-body">
+		{control pageForm}
+	</div>
+</div>
+{/block}

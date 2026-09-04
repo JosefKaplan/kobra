@@ -1,0 +1,74 @@
+{layout '../@layout.latte'}
+
+{block title}Nový uživatel{/block}
+
+{block content}
+<div class="mb-4">
+	<a n:href="default" class="btn btn-outline-secondary btn-sm">
+		<i class="bi bi-arrow-left me-1"></i>Zpět na seznam
+	</a>
+</div>
+
+<div class="card shadow-sm border-0 rounded-4 mx-auto" style="max-width: 600px;">
+	<div class="card-body p-4">
+		<h1 class="h4 text-center mb-4 fw-bold">
+			<i class="bi bi-person-plus me-2 text-primary"></i>Nový uživatel
+		</h1>
+
+		{form userForm}
+			<div class="alert alert-danger" n:if="$form->hasErrors()">
+				<div n:foreach="$form->getErrors() as $error">{$error}</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-6 mb-3">
+					{label firstName class => "form-label fw-semibold" /}
+					{input firstName class => "form-control"}
+				</div>
+				<div class="col-md-6 mb-3">
+					{label lastName class => "form-label fw-semibold" /}
+					{input lastName class => "form-control"}
+				</div>
+			</div>
+
+			<div class="mb-3">
+				{label userName class => "form-label fw-semibold" /}
+				{input userName class => "form-control"}
+			</div>
+
+			<div class="mb-3">
+				{label email class => "form-label fw-semibold" /}
+				{input email class => "form-control"}
+			</div>
+
+			<div class="mb-3">
+				{label phone class => "form-label fw-semibold" /}
+				{input phone class => "form-control"}
+			</div>
+
+			<div class="mb-3">
+				{label password class => "form-label fw-semibold" /}
+				{input password class => "form-control"}
+				<div class="form-text text-muted small">Ponechte prázdné, pokud nechcete heslo měnit (platí pro editaci).</div>
+			</div>
+
+			<div class="row" n:ifset="$form['role']">
+				<div class="col-md-6 mb-3">
+					{label role class => "form-label fw-semibold" /}
+					{input role class => "form-select"}
+				</div>
+				<div class="col-md-6 mb-3 d-flex align-items-center">
+					<div class="form-check mt-3">
+						{input isActive class => "form-check-input"}
+						{label isActive class => "form-check-label fw-semibold" /}
+					</div>
+				</div>
+			</div>
+			
+			<div class="d-grid mt-4">
+				{input submit class => "btn btn-primary btn-lg rounded-3"}
+			</div>
+		{/form}
+	</div>
+</div>
+{/block}

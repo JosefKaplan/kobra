@@ -1,0 +1,125 @@
+// Admin shell — topbar + sidebar + main content
+
+$sidebar-width: 230px;
+$topbar-height: 56px;
+$sidebar-bg: #1e2532;
+$sidebar-text: #9aa4b5;
+$sidebar-hover-bg: rgba(255, 255, 255, .06);
+$sidebar-active-bg: rgba(79, 70, 229, .22);
+
+body {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+}
+
+#topbar {
+	height: $topbar-height;
+	flex-shrink: 0;
+	background-color: darken($sidebar-bg, 4%) !important;
+}
+
+#wrapper {
+	display: flex;
+	flex: 1;
+}
+
+#sidebar {
+	width: $sidebar-width;
+	min-width: $sidebar-width;
+	background-color: $sidebar-bg;
+	min-height: calc(100vh - #{$topbar-height});
+
+	.nav-section {
+		font-size: .7rem;
+		text-transform: uppercase;
+		letter-spacing: .08em;
+		color: rgba($sidebar-text, .7);
+		padding: 1.25rem 1.25rem .4rem;
+	}
+
+	.nav-link {
+		color: $sidebar-text;
+		border-radius: 0;
+		border-left: 3px solid transparent;
+		padding: .6rem 1.25rem;
+		display: flex;
+		align-items: center;
+		gap: .5rem;
+		transition: color .15s ease, background-color .15s ease;
+
+		&:hover {
+			color: #fff;
+			background-color: $sidebar-hover-bg;
+		}
+
+		&.active {
+			color: #fff;
+			background-color: $sidebar-active-bg;
+			border-left-color: tint-color($primary, 25%);
+		}
+	}
+}
+
+#main {
+	flex: 1;
+	min-width: 0;
+	overflow-x: auto;
+}
+
+// On small screens the sidebar becomes a horizontal strip under the topbar
+@include media-breakpoint-down(md) {
+	#wrapper {
+		flex-direction: column;
+	}
+
+	#sidebar {
+		width: 100%;
+		min-width: 0;
+		min-height: 0;
+		overflow-x: auto;
+
+		.nav-section {
+			display: none;
+		}
+
+		.nav {
+			flex-direction: row !important;
+		}
+
+		.nav-link {
+			white-space: nowrap;
+			border-left: none;
+			border-bottom: 3px solid transparent;
+
+			&.active {
+				border-bottom-color: tint-color($primary, 25%);
+			}
+		}
+	}
+}
+
+// Component card type accents
+.component-card { border-left: 3px solid transparent; }
+.component-card[data-type="hero"]          { border-left-color: $primary; }
+.component-card[data-type="heading"]       { border-left-color: $info; }
+.component-card[data-type="text_block"]    { border-left-color: $secondary; }
+.component-card[data-type="image"]         { border-left-color: $orange; }
+.component-card[data-type="columns"]       { border-left-color: $purple; }
+.component-card[data-type="cta"]           { border-left-color: $success; }
+.component-card[data-type="contact_form"]  { border-left-color: $teal; }
+
+// Icon colors for component types whose accents have no Bootstrap text-* utility
+.text-purple { color: $purple; }
+.text-orange { color: $orange; }
+.text-teal   { color: $teal; }
+
+// Quill mounts on a div that becomes .ql-container, whose stylesheet sets height:100%.
+// Inside a grid row the stretched .col-* has a definite height, so 100% suddenly resolves
+// and the editor overflows the card bottom. Let editors grow with content instead,
+// with a comfortable minimum typing area.
+.component-card .ql-container { height: auto; }
+.component-card .ql-editor {
+	height: auto;
+	min-height: 8rem;
+}

@@ -1,0 +1,264 @@
+{**
+ * Shared building blocks of the component editor.
+ * Imported (via {import}) by edit.latte (page editor) and columns.latte (columns container editor).
+ *}
+
+{*
+ * Card header content: type icon + name, hidden badge, move arrows, delete.
+ * $horizontal switches the arrow icons/titles for side-by-side lists (columns screen);
+ * the moveComponent! direction stays up/down ("up" = towards the start of the list).
+ *}
+{define componentHeader, App\Entity\PageComponent $component, bool $first = false, bool $last = false, ?int $counter = null, bool $horizontal = false}
+	{var int $componentId = $component->getId()}
+	<div class="d-flex align-items-center gap-2">
+		{if $component->getType() === 'hero'}
+			<i class="bi bi-image text-primary"></i>
+			<span class="fw-semibold">Hero sekce</span>
+		{elseif $component->getType() === 'heading'}
+			<i class="bi bi-type-h2 text-info"></i>
+			<span class="fw-semibold">Nadpis</span>
+		{elseif $component->getType() === 'text_block'}
+			<i class="bi bi-text-paragraph text-secondary"></i>
+			<span class="fw-semibold">Textový blok</span>
+		{elseif $component->getType() === 'image'}
+			<i class="bi bi-card-image text-orange"></i>
+			<span class="fw-semibold">Obrázek</span>
+		{elseif $component->getType() === 'columns'}
+			<i class="bi bi-layout-three-columns text-purple"></i>
+			<span class="fw-semibold">Sloupce</span>
+		{elseif $component->getType() === 'cta'}
+			<i class="bi bi-megaphone text-success"></i>
+			<span class="fw-semibold">CTA blok</span>
+		{elseif $component->getType() === 'contact_form'}
+			<i class="bi bi-envelope-paper text-teal"></i>
+			<span class="fw-semibold">Kontaktní formulář</span>
+		{else}
+			<i class="bi bi-puzzle text-muted"></i>
+			<span class="fw-semibold">{$component->getType()}</span>
+		{/if}
+		<span n:if="$counter !== null" class="badge bg-light text-muted border small">#{$counter}</span>
+	</div>
+	<div class="d-flex align-items-center gap-2">
+		{if !$component->isVisible()}
+			<span class="badge bg-warning text-dark">
+				<i class="bi bi-eye-slash me-1"></i>Skrytá
+			</span>
+		{/if}
+		<div class="btn-group">
+			<a n:href="moveComponent! componentId => $componentId, direction => 'up'"
+			   class="btn btn-outline-secondary btn-sm {if $first}disabled{/if}"
+			   title="{$horizontal ? 'Posunout doleva' : 'Posunout nahoru'}">
+				<i class="bi {$horizontal ? 'bi-arrow-left' : 'bi-arrow-up'}"></i>
+			</a>
+			<a n:href="moveComponent! componentId => $componentId, direction => 'down'"
+			   class="btn btn-outline-secondary btn-sm {if $last}disabled{/if}"
+			   title="{$horizontal ? 'Posunout doprava' : 'Posunout dolů'}">
+				<i class="bi {$horizontal ? 'bi-arrow-right' : 'bi-arrow-down'}"></i>
+			</a>
+		</div>
+		<a n:href="deleteComponent! componentId => $componentId"
+		   class="btn btn-outline-danger btn-sm"
+		   onclick="return confirm('Smazat tuto komponentu?')">
+			<i class="bi bi-trash"></i>
+		</a>
+	</div>
+{/define}
+
+{*
+ * The editing form of one component (type-specific fields + visibility/save footer).
+ * A `columns` container has no fields of its own — it shows a link to its dedicated
+ * editing screen where each column is managed as a child component.
+ *}
+{define componentForm, App\Entity\PageComponent $component}
+	{var $componentContent = $component->getContent()}
+	{var int $componentId = $component->getId()}
+	<form method="post" action="{link saveComponent! componentId => $componentId}">
+
+		{if $component->getType() === 'hero'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-heading" class="form-label fw-semibold">Hlavní nadpis</label>
+				<input type="text" id="cmp-{$componentId}-heading" name="heading" class="form-control"
+				       value="{$componentContent['heading'] ?? ''}" placeholder="Velký nadpis stránky…">
+			</div>
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-subheading" class="form-label">Podnadpis</label>
+				<input type="text" id="cmp-{$componentId}-subheading" name="subheading" class="form-control"
+				       value="{$componentContent['subheading'] ?? ''}" placeholder="Krátký popis nebo slogan…">
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-button_text" class="form-label">Text tlačítka</label>
+					<input type="text" id="cmp-{$componentId}-button_text" name="button_text" class="form-control"
+					       value="{$componentContent['button_text'] ?? ''}" placeholder="Zjistit více">
+				</div>
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-button_url" class="form-label">URL tlačítka</label>
+					<input type="text" id="cmp-{$componentId}-button_url" name="button_url" class="form-control"
+					       value="{$componentContent['button_url'] ?? ''}" placeholder="/kontakt nebo https://…">
+				</div>
+			</div>
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-image_url" class="form-label">Obrázek na pozadí (URL, nepovinné)</label>
+				<input type="text" id="cmp-{$componentId}-image_url" name="image_url" class="form-control"
+				       value="{$componentContent['image_url'] ?? ''}" placeholder="https://…">
+				<div class="form-text">S obrázkem se hero vykreslí s tmavým překrytím a bílým textem.</div>
+			</div>
+
+		{elseif $component->getType() === 'heading'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-text" class="form-label fw-semibold">Text nadpisu</label>
+				<input type="text" id="cmp-{$componentId}-text" name="text" class="form-control form-control-lg"
+				       value="{$componentContent['text'] ?? ''}" placeholder="Nadpis sekce…">
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-level" class="form-label">Úroveň</label>
+					<select id="cmp-{$componentId}-level" name="level" class="form-select">
+						{foreach ['h2' => 'H2 – Hlavní nadpis', 'h3' => 'H3 – Podnadpis', 'h4' => 'H4 – Menší nadpis', 'h5' => 'H5 – Malý nadpis'] as $val => $label}
+							<option value="{$val}" {if ($componentContent['level'] ?? 'h2') === $val}selected{/if}>{$label}</option>
+						{/foreach}
+					</select>
+				</div>
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-align" class="form-label">Zarovnání</label>
+					<select id="cmp-{$componentId}-align" name="align" class="form-select">
+						{foreach ['start' => 'Vlevo', 'center' => 'Na střed', 'end' => 'Vpravo'] as $val => $label}
+							<option value="{$val}" {if ($componentContent['align'] ?? 'start') === $val}selected{/if}>{$label}</option>
+						{/foreach}
+					</select>
+				</div>
+			</div>
+
+		{elseif $component->getType() === 'text_block'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-content" class="form-label fw-semibold">Obsah</label>
+				<textarea id="cmp-{$componentId}-content" name="content" class="form-control" rows="6"
+				          data-richtext placeholder="Text odstavce…">{$componentContent['content'] ?? ''}</textarea>
+			</div>
+
+		{elseif $component->getType() === 'image'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-url" class="form-label fw-semibold">URL obrázku</label>
+				<input type="text" id="cmp-{$componentId}-url" name="url" class="form-control"
+				       value="{$componentContent['url'] ?? ''}" placeholder="https://…">
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-alt" class="form-label">Alternativní text</label>
+					<input type="text" id="cmp-{$componentId}-alt" name="alt" class="form-control"
+					       value="{$componentContent['alt'] ?? ''}" placeholder="Popis obrázku pro čtečky…">
+				</div>
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-caption" class="form-label">Popisek (nepovinný)</label>
+					<input type="text" id="cmp-{$componentId}-caption" name="caption" class="form-control"
+					       value="{$componentContent['caption'] ?? ''}" placeholder="Zobrazí se pod obrázkem…">
+				</div>
+			</div>
+
+		{elseif $component->getType() === 'columns'}
+			<div class="mb-3 d-flex align-items-center justify-content-between gap-3 p-3 bg-light border rounded-3">
+				<div>
+					<div class="fw-semibold mb-1">Počet sloupců: {count($component->getActiveChildren())}</div>
+					<div class="small text-muted">Každý sloupec je samostatný blok. Přidávat, upravovat a řadit je můžete na samostatné stránce.</div>
+				</div>
+				<a n:href="columns, id => $componentId" class="btn btn-primary btn-sm text-nowrap">
+					<i class="bi bi-pencil-square me-1"></i>Upravit sloupce
+				</a>
+			</div>
+
+		{elseif $component->getType() === 'cta'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-heading" class="form-label fw-semibold">Nadpis výzvy</label>
+				<input type="text" id="cmp-{$componentId}-heading" name="heading" class="form-control"
+				       value="{$componentContent['heading'] ?? ''}" placeholder="Nadpis výzvy k akci…">
+			</div>
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-body" class="form-label">Popis</label>
+				<textarea id="cmp-{$componentId}-body" name="body" class="form-control" rows="3"
+				          data-richtext placeholder="Doplňující text…">{$componentContent['body'] ?? ''}</textarea>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-4">
+					<label for="cmp-{$componentId}-button_text" class="form-label">Text tlačítka</label>
+					<input type="text" id="cmp-{$componentId}-button_text" name="button_text" class="form-control"
+					       value="{$componentContent['button_text'] ?? ''}" placeholder="Kontaktujte nás">
+				</div>
+				<div class="col-sm-4">
+					<label for="cmp-{$componentId}-button_url" class="form-label">URL tlačítka</label>
+					<input type="text" id="cmp-{$componentId}-button_url" name="button_url" class="form-control"
+					       value="{$componentContent['button_url'] ?? ''}" placeholder="/kontakt">
+				</div>
+				<div class="col-sm-4">
+					<label for="cmp-{$componentId}-button_style" class="form-label">Styl tlačítka</label>
+					<select id="cmp-{$componentId}-button_style" name="button_style" class="form-select">
+						{foreach ['primary' => 'Primary', 'secondary' => 'Secondary', 'outline-primary' => 'Outline Primary', 'outline-secondary' => 'Outline Secondary'] as $val => $label}
+							<option value="{$val}" {if ($componentContent['button_style'] ?? 'primary') === $val}selected{/if}>{$label}</option>
+						{/foreach}
+					</select>
+				</div>
+			</div>
+
+		{elseif $component->getType() === 'contact_form'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-heading" class="form-label fw-semibold">Nadpis</label>
+				<input type="text" id="cmp-{$componentId}-heading" name="heading" class="form-control"
+				       value="{$componentContent['heading'] ?? ''}" placeholder="Napište nám…">
+			</div>
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-action_url" class="form-label">URL pro odeslání (atribut action)</label>
+				<input type="text" id="cmp-{$componentId}-action_url" name="action_url" class="form-control"
+				       value="{$componentContent['action_url'] ?? ''}" placeholder="https://formspree.io/f/…">
+				<div class="form-text">Formulář (e-mail + zpráva) se odešle metodou POST na tuto adresu, např. službě Formspree. Bez adresy se formulář nezobrazí.</div>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-4">
+					<label for="cmp-{$componentId}-email_placeholder" class="form-label">Nápověda pole e-mail</label>
+					<input type="text" id="cmp-{$componentId}-email_placeholder" name="email_placeholder" class="form-control"
+					       value="{$componentContent['email_placeholder'] ?? ''}" placeholder="Váš e-mail…">
+				</div>
+				<div class="col-sm-4">
+					<label for="cmp-{$componentId}-message_placeholder" class="form-label">Nápověda pole zpráva</label>
+					<input type="text" id="cmp-{$componentId}-message_placeholder" name="message_placeholder" class="form-control"
+					       value="{$componentContent['message_placeholder'] ?? ''}" placeholder="Vaše zpráva…">
+				</div>
+				<div class="col-sm-4">
+					<label for="cmp-{$componentId}-button_text" class="form-label">Text tlačítka</label>
+					<input type="text" id="cmp-{$componentId}-button_text" name="button_text" class="form-control"
+					       value="{$componentContent['button_text'] ?? ''}" placeholder="Odeslat">
+				</div>
+			</div>
+
+		{/if}
+
+		{* Footer: spacing above/below the block + visibility + save — applies to every type, not just its own fields *}
+		<div class="row g-3 align-items-center pt-3 border-top mt-1">
+			<div class="col-sm-4">
+				<label for="cmp-{$componentId}-spacingTop" class="form-label mb-0 small">Mezera nad blokem</label>
+				<select id="cmp-{$componentId}-spacingTop" name="spacingTop" class="form-select form-select-sm">
+					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
+						<option value="{$val}" {if ($component->getSpacingTop() ?? 'sm') === $val}selected{/if}>{$label}</option>
+					{/foreach}
+				</select>
+			</div>
+			<div class="col-sm-4">
+				<label for="cmp-{$componentId}-spacingBottom" class="form-label mb-0 small">Mezera pod blokem</label>
+				<select id="cmp-{$componentId}-spacingBottom" name="spacingBottom" class="form-select form-select-sm">
+					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
+						<option value="{$val}" {if ($component->getSpacingBottom() ?? 'sm') === $val}selected{/if}>{$label}</option>
+					{/foreach}
+				</select>
+			</div>
+			<div class="col-sm-4 d-flex align-items-center justify-content-end gap-3">
+				<div class="form-check mb-0">
+					<input type="checkbox" id="cmp-{$componentId}-isVisible" name="isVisible"
+					       class="form-check-input" {if $component->isVisible()}checked{/if}>
+					<label for="cmp-{$componentId}-isVisible" class="form-check-label">Viditelná</label>
+				</div>
+				<button type="submit" class="btn btn-primary btn-sm">
+					<i class="bi bi-check-lg me-1"></i>Uložit
+				</button>
+			</div>
+		</div>
+
+	</form>
+{/define}

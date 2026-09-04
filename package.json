@@ -1,0 +1,20 @@
+{
+	"type": "module",
+	"dependencies": {
+		"@contributte/datagrid": "^7.1.0",
+		"bootstrap": "^5.3.8",
+		"bootstrap-icons": "^1.13.1",
+		"naja": "^3.3.3",
+		"nette-forms": "^3.3",
+		"quill": "^2.0.3"
+	},
+	"devDependencies": {
+		"@nette/vite-plugin": "^1.0.1",
+		"sass": "^1.101.0",
+		"vite": "^6.3.5"
+	},
+	"scripts": {
+		"dev": "vite",
+		"build": "vite build"
+	}
+}

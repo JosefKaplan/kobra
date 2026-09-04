@@ -1,0 +1,31 @@
+{layout '../@layout.latte'}
+
+{block title}Navigace a patičky{/block}
+
+{block content}
+<div class="d-flex justify-content-between align-items-center mb-4">
+	<h1 class="h3 mb-0">
+		<i class="bi bi-layout-text-window-reverse me-2 text-primary"></i>Navigace a patičky
+	</h1>
+	<div class="d-flex gap-2">
+		<a n:href="add, type => 'nav'" class="btn btn-primary btn-sm">
+			<i class="bi bi-plus-lg me-1"></i>Nová navigace
+		</a>
+		<a n:href="add, type => 'footer'" class="btn btn-outline-primary btn-sm">
+			<i class="bi bi-plus-lg me-1"></i>Nová patička
+		</a>
+	</div>
+</div>
+
+<p class="text-muted">
+	Zde nadefinované navigace a patičky přiřadíte stránkám v jejich nastavení
+	(<i class="bi bi-sliders"></i> v editaci stránky). Stránka bez přiřazené navigace
+	či patičky žádnou nezobrazuje.
+</p>
+
+<div class="card shadow-sm">
+	<div class="card-body p-0">
+		{control blocksGrid}
+	</div>
+</div>
+{/block}

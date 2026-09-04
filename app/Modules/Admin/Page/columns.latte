@@ -1,0 +1,76 @@
+{layout '../@layout.latte'}
+{import '_componentEditor.latte'}
+{varType App\Entity\PageComponent $component}
+{varType App\Entity\Page $page}
+
+{block title}Sloupce – {$page->getTitle()}{/block}
+
+{block content}
+<div class="d-flex align-items-start justify-content-between mb-4">
+	<div>
+		<a href="{link edit, id => $page->getId()}#component-{$component->getId()}" class="btn btn-outline-secondary btn-sm mb-2">
+			<i class="bi bi-arrow-left me-1"></i>Zpět na stránku
+		</a>
+		<h1 class="h3 mb-0">
+			<i class="bi bi-layout-three-columns me-2 text-purple"></i>Sloupce
+			<span class="text-muted fw-normal">– {$page->getTitle()}</span>
+		</h1>
+	</div>
+	<div class="dropdown">
+		<button class="btn btn-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"
+		        {if count($component->getActiveChildren()) >= 4}disabled title="Nejvýše 4 sloupce"{/if}>
+			<i class="bi bi-plus-lg me-1"></i>Přidat sloupec
+		</button>
+		<ul class="dropdown-menu dropdown-menu-end">
+			<li><h6 class="dropdown-header small text-muted">Typ obsahu sloupce</h6></li>
+			<li>
+				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'heading', parentId => $component->getId()">
+					<i class="bi bi-type-h2 me-2 text-info"></i>Nadpis
+				</a>
+			</li>
+			<li>
+				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'text_block', parentId => $component->getId()">
+					<i class="bi bi-text-paragraph me-2 text-secondary"></i>Textový blok
+				</a>
+			</li>
+			<li>
+				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'cta', parentId => $component->getId()">
+					<i class="bi bi-megaphone me-2 text-success"></i>CTA blok
+				</a>
+			</li>
+			<li>
+				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'image', parentId => $component->getId()">
+					<i class="bi bi-card-image me-2 text-orange"></i>Obrázek
+				</a>
+			</li>
+		</ul>
+	</div>
+</div>
+
+<p class="text-muted">
+	Každý sloupec je samostatný blok. Na webu se sloupce zobrazí vedle sebe ve stejné šířce,
+	v pořadí zleva doprava — šipkami <i class="bi bi-arrow-left"></i>/<i class="bi bi-arrow-right"></i> je přeuspořádáte.
+	Nejvýše 4 sloupce.
+</p>
+
+<div class="row g-3">
+	{foreach $component->getActiveChildren() as $child}
+		<div class="col-md">
+			<div id="component-{$child->getId()}" class="card shadow-sm component-card h-100" data-type="{$child->getType()}">
+				<div class="card-header d-flex align-items-center justify-content-between py-2">
+					{include componentHeader, component: $child, first: $iterator->first, last: $iterator->last, counter: $iterator->counter, horizontal: true}
+				</div>
+				<div class="card-body">
+					{include componentForm, component: $child}
+				</div>
+			</div>
+		</div>
+	{/foreach}
+</div>
+
+<div n:if="!count($component->getActiveChildren())" class="text-center py-5 text-muted border rounded-3 bg-light">
+	<i class="bi bi-layout-three-columns fs-1 d-block mb-2 opacity-25"></i>
+	<p class="mb-0">Zatím žádné sloupce.</p>
+	<p class="small">Přidejte první tlačítkem <strong>Přidat sloupec</strong> výše.</p>
+</div>
+{/block}

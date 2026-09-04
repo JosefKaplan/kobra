@@ -1,0 +1,125 @@
+{**
+ * Shared renderer of CMS page components.
+ * Used by Page/default.latte and Home/default.latte (selected homepage).
+ * Expects: App\Entity\Page $page
+ *}
+{varType App\Entity\Page $page}
+
+{*
+ * Renders one component (and, for containers, its children — recursively).
+ * Callers are responsible for the visibility check.
+ *}
+{define renderComponent, App\Entity\PageComponent $component}
+	{var $c = $component->getContent()}
+	{* Admin-set override of the type's built-in top/bottom margin (see PageComponent::SPACING_VALUES); inline style
+	   wins over the classes below regardless of their specificity, so this always takes precedence when set. *}
+	{var $spacingTopLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingTop() ?? ''] ?? null}
+	{var $spacingBottomLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingBottom() ?? ''] ?? null}
+	{var $spacingStyle = trim(
+		($spacingTopLength !== null ? 'margin-top: ' . $spacingTopLength . '; ' : '')
+		. ($spacingBottomLength !== null ? 'margin-bottom: ' . $spacingBottomLength : '')
+	)}
+	{var $spacingStyle = $spacingStyle !== '' ? $spacingStyle : null}
+	{* A `columns` child sits next to siblings in one row — the top margin some types carry for
+	   standalone page flow would sink them below siblings with no top margin, breaking row alignment. *}
+	{var $isColumn = $component->getParent() !== null}
+
+	{switch $component->getType()}
+	{case 'hero'}
+		{* With a background image the hero becomes a "cover": photo + dark overlay + light text (see front/_layout.scss) *}
+		{var $heroImage = trim($c['image_url'] ?? '')}
+		<section n:class="page-hero, mb-5, $heroImage !== '' ? 'page-hero-cover'" n:attr="style: $spacingStyle">
+			<img n:if="$heroImage !== ''" class="page-hero-bg" src="{$heroImage}" alt="">
+			<div class="page-hero-content">
+				<h1 class="display-5 mb-3">{$c['heading'] ?? ''}</h1>
+				<p n:if="$c['subheading'] ?? null" n:class="lead, mb-4, $heroImage !== '' ? 'text-white-50' : 'text-muted'">{$c['subheading']}</p>
+				<a n:if="($c['button_text'] ?? '') && ($c['button_url'] ?? '')"
+				   href="{$c['button_url']}" class="btn btn-primary btn-lg">{$c['button_text']}</a>
+			</div>
+		</section>
+
+	{case 'heading'}
+		{* The webalized text doubles as an anchor id, so nav links like `#latest-news` can target the section *}
+		<h2 n:tag="$c['level'] ?? 'h2'" n:attr="id: trim($c['text'] ?? '') !== '' ? ($c['text']|webalize) : null, style: $spacingStyle"
+		    n:class="!$isColumn ? 'mt-5', mb-3, 'text-' . ($c['align'] ?? 'start')">{$c['text'] ?? ''}</h2>
+
+	{case 'text_block'}
+		<div class="mb-4 rich-text" n:attr="style: $spacingStyle">{($c['content'] ?? '')|noescape}</div>
+
+	{case 'image'}
+		{var $imageUrl = trim($c['url'] ?? '')}
+		<figure n:if="$imageUrl !== ''" class="page-image mb-4" n:attr="style: $spacingStyle">
+			<img src="{$imageUrl}" alt="{$c['alt'] ?? ''}" class="img-fluid rounded" loading="lazy">
+			<figcaption n:if="trim($c['caption'] ?? '') !== ''" class="small text-muted mt-2">{$c['caption']}</figcaption>
+		</figure>
+
+	{case 'columns'}
+		{* Container: each visible child component is one equal-width column (.col-md splits
+		   the row evenly); hidden children take no space. Stacks vertically below md. *}
+		<div class="row g-4 mb-4" n:attr="style: $spacingStyle">
+			{foreach $component->getActiveChildren() as $child}
+				{continueIf !$child->isVisible()}
+				<div class="col-md">
+					{include renderComponent, component: $child}
+				</div>
+			{/foreach}
+		</div>
+
+	{case 'cta'}
+		<section n:class="page-cta, !$isColumn ? 'my-5' : 'mb-3'" n:attr="style: $spacingStyle">
+			<h2 class="h3 mb-2">{$c['heading'] ?? ''}</h2>
+			<div n:if="$c['body'] ?? null" class="text-muted mb-3 rich-text">{($c['body'])|noescape}</div>
+			<a n:if="($c['button_text'] ?? '') && ($c['button_url'] ?? '')"
+			   href="{$c['button_url']}" class="btn btn-{$c['button_style'] ?? 'primary'}">{$c['button_text']}</a>
+		</section>
+
+	{case 'contact_form'}
+		{* Posts to an external form service (e.g. Formspree) — without an action URL nothing renders *}
+		<section n:if="trim($c['action_url'] ?? '') !== ''" class="page-contact-form my-5" n:attr="style: $spacingStyle">
+			<h2 n:if="trim($c['heading'] ?? '') !== ''" class="h3 mb-4 text-center">{$c['heading']}</h2>
+			<form method="post" action="{$c['action_url']}">
+				<div class="mb-3">
+					<input type="email" name="email" class="form-control" required
+					       placeholder="{$c['email_placeholder'] ?? ''}">
+				</div>
+				<div class="mb-3">
+					<textarea name="message" rows="5" class="form-control" required
+					          placeholder="{$c['message_placeholder'] ?? ''}"></textarea>
+				</div>
+				<div class="text-center">
+					<button type="submit" class="btn btn-primary">{$c['button_text'] ?? 'Odeslat'}</button>
+				</div>
+			</form>
+		</section>
+
+	{default}
+		{* unknown component type — do not render anything on the public site *}
+	{/switch}
+{/define}
+
+{var $rootComponents = $page->getRootComponents()}
+
+{* Show a plain title header only when the page does not open with its own hero *}
+{var $hasHero = false}
+{foreach $rootComponents as $component}
+	{if $component->isVisible() && $component->getType() === 'hero'}
+		{var $hasHero = true}
+	{/if}
+{/foreach}
+
+<article class="mx-auto" style="max-width: 900px;">
+
+	<header n:if="!$hasHero" class="mb-4">
+		<h1>{$page->getTitle()}</h1>
+	</header>
+
+	{foreach $rootComponents as $component}
+		{continueIf !$component->isVisible()}
+		{include renderComponent, component: $component}
+	{/foreach}
+
+	<div n:if="!count($rootComponents)" class="text-center text-muted py-5">
+		Tato stránka zatím nemá žádný obsah.
+	</div>
+
+</article>

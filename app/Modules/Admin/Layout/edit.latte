@@ -1,0 +1,32 @@
+{layout '../@layout.latte'}
+{varType ?App\Entity\LayoutBlock $block}
+{varType string $type}
+
+{var $typeLabel = $type === 'nav' ? 'navigace' : 'patička'}
+
+{block title}{$block !== null ? 'Upravit' : 'Nová'} {$typeLabel}{/block}
+
+{block content}
+<div class="mb-4">
+	<a n:href="default" class="btn btn-outline-secondary btn-sm mb-3">
+		<i class="bi bi-arrow-left me-1"></i>Zpět na seznam
+	</a>
+	<h1 class="h3 mb-0">
+		{if $type === 'nav'}
+			<i class="bi bi-menu-button-wide me-2 text-primary"></i>
+		{else}
+			<i class="bi bi-layout-text-window-reverse me-2 text-primary"></i>
+		{/if}
+		{$block !== null ? 'Upravit' : 'Nová'} {$typeLabel}{if $block !== null} – {$block->getName()}{/if}
+	</h1>
+</div>
+
+<div class="card shadow-sm" style="max-width: 720px">
+	<div class="card-body">
+		{control blockForm}
+		{if $type === 'nav'}
+			<div class="form-text mt-2">Jeden odkaz na řádek ve tvaru <code>Text | URL</code>.</div>
+		{/if}
+	</div>
+</div>
+{/block}
