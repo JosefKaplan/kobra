@@ -8,9 +8,9 @@
  * click-to-browse upload widget on top of the plain text input — the text input stays the value
  * that's actually posted (and the no-JS fallback: paste a URL directly), same as before this
  * existed. Used for any content field that holds an image URL: hero.image_url, image.url, and
- * each masonry book's main image / gallery images (see bookRow/galleryImageRow below).
+ * a masonry tile's main image / gallery photos (see galleryImageRow below).
  *}
-{define imageUploadField, string $id, string $name, string $value, string $label, string $placeholder = 'https://…'}
+{define imageUploadField, string $id, string $name, string $value, string $label, string $placeholder = 'https://…', ?string $hint = null}
 	<div class="mb-3" data-image-upload data-upload-endpoint="{link uploadImage!}">
 		<label for="{$id}" class="form-label">{$label}</label>
 		<input type="text" id="{$id}" name="{$name}" class="form-control mb-2"
@@ -21,99 +21,28 @@
 			<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" data-image-upload-input>
 		</div>
 		<div class="small text-danger mt-1" data-image-upload-error hidden></div>
+		<div n:if="$hint !== null" class="form-text">{$hint}</div>
 	</div>
 {/define}
 
 {*
- * One row of a `masonry` block's item list: a "book" — a main image (shown as the grid tile) plus
- * an optional heading/text and an optional photo gallery, both revealed when the tile is clicked
- * (see the `masonry` case in components.latte). $item is normalized through MasonryItem::normalize()
- * so older items (pre-book shape: {image_url, link_url, alt, is_visible}) still populate the form.
- * Rendered both for existing items (componentForm below) and — with $index as the literal
- * placeholder string '__BOOK_INDEX__' — as the `<template>` masonry.js clones and renumbers when
- * "Přidat blok" is clicked (see `data-book-template`/`data-book-add` in masonry.js).
+ * One photo of a `masonry_item` tile's gallery (image + alt text + grip handle + remove).
+ * Rendered both for existing photos (componentForm below) and — with $index as the literal
+ * placeholder string '__INDEX__' — as the `<template>` masonry.js clones and renumbers when
+ * "Přidat fotku" is clicked or the bulk dropzone finishes an upload (see `data-gallery-template`).
  *}
-{define bookRow, string $index, array $item, int $componentId}
-	{var $book = App\Helpers\MasonryItem::normalize($item)}
-	<div class="row g-3 align-items-start mb-3 pb-3 border-bottom masonry-item" data-book>
-		<div class="col-md-6">
-			{include imageUploadField,
-				id: 'cmp-' . $componentId . '-book-' . $index . '-image',
-				name: 'items[' . $index . '][main_image_url]',
-				value: $book['main_image_url'],
-				label: 'Hlavní obrázek'}
-			<div class="mb-2">
-				<label class="form-label small">Alt text hlavního obrázku</label>
-				<input type="text" name="items[{$index}][main_image_alt]" class="form-control form-control-sm"
-				       value="{$book['main_image_alt']}" placeholder="Popis obrázku…">
-			</div>
-			<div class="mb-2">
-				<label class="form-label small">Nadpis (nepovinný)</label>
-				<input type="text" name="items[{$index}][heading]" class="form-control form-control-sm"
-				       value="{$book['heading']}" placeholder="Nadpis zobrazený po rozkliknutí…">
-			</div>
-			<div class="mb-2">
-				<label class="form-label small">Text (nepovinný)</label>
-				<textarea name="items[{$index}][text]" class="form-control form-control-sm" rows="3"
-				          placeholder="Text zobrazený po rozkliknutí…">{$book['text']}</textarea>
-			</div>
-			<div class="form-check">
-				{* New rows (item: []) have no key at all yet — default to checked, same as a brand new component defaults to visible *}
-				<input type="checkbox" id="cmp-{$componentId}-book-{$index}-visible" name="items[{$index}][is_visible]"
-				       class="form-check-input" {if $book['is_visible']}checked{/if}>
-				<label for="cmp-{$componentId}-book-{$index}-visible" class="form-check-label small">Aktivní</label>
-			</div>
-		</div>
-		<div class="col-md-6">
-			<label class="form-label small d-block">Další fotky (zobrazí se v galerii po rozkliknutí)</label>
-			<div class="mb-2" data-book-gallery-bulk data-upload-endpoint="{link uploadImage!}">
-				<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
-					<span>Přetáhněte sem více obrázků nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span>.</span>
-					<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-input>
-				</div>
-				<div class="small text-danger mt-1" data-error hidden></div>
-			</div>
-			<div n:inner-foreach="$book['gallery'] as $gi => $g" data-book-gallery>
-				{include galleryImageRow, bookIndex: $index, index: (string) $gi, item: $g, componentId: $componentId}
-			</div>
-			<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-add>
-				<i class="bi bi-plus-lg me-1"></i>Přidat fotku do galerie
-			</button>
-			<template data-gallery-template>
-				{include galleryImageRow, bookIndex: $index, index: '__GALLERY_INDEX__', item: [], componentId: $componentId}
-			</template>
-		</div>
-		<div class="col-12 d-flex justify-content-end gap-1">
-			<button type="button" class="btn btn-outline-secondary btn-sm masonry-drag-handle" data-book-drag-handle
-			        title="Přetáhněte pro změnu pořadí" aria-label="Přetáhněte pro změnu pořadí">
-				<i class="bi bi-grip-vertical"></i>
-			</button>
-			<button type="button" class="btn btn-outline-danger btn-sm" data-book-remove title="Odebrat blok">
-				<i class="bi bi-trash"></i>
-			</button>
-		</div>
-	</div>
-{/define}
-
-{*
- * One photo inside a book's gallery (image + alt text + remove). Rendered both for existing
- * gallery items and — with $index as the literal placeholder string '__GALLERY_INDEX__' — as the
- * `<template>` masonry.js clones when "Přidat fotku do galerie" is clicked. $bookIndex is always
- * a concrete index (never a placeholder), including inside the book-level `<template>` above,
- * since a gallery row's own name attributes must nest under whichever book they end up in.
- *}
-{define galleryImageRow, string $bookIndex, string $index, array $item, int $componentId}
+{define galleryImageRow, string $index, array $item, int $componentId}
 	<div class="row g-2 align-items-start mb-2 masonry-item" data-gallery-item>
 		<div class="col-8">
 			{include imageUploadField,
-				id: 'cmp-' . $componentId . '-book-' . $bookIndex . '-gallery-' . $index . '-image',
-				name: 'items[' . $bookIndex . '][gallery][' . $index . '][image_url]',
+				id: 'cmp-' . $componentId . '-gallery-' . $index . '-image',
+				name: 'gallery[' . $index . '][image_url]',
 				value: $item['image_url'] ?? '',
 				label: 'Fotka'}
 		</div>
 		<div class="col-3">
 			<label class="form-label small">Alt text</label>
-			<input type="text" name="items[{$bookIndex}][gallery][{$index}][alt]" class="form-control form-control-sm"
+			<input type="text" name="gallery[{$index}][alt]" class="form-control form-control-sm"
 			       value="{$item['alt'] ?? ''}" placeholder="Popis obrázku…">
 		</div>
 		<div class="col-1 pt-4 d-flex gap-1">
@@ -154,6 +83,13 @@
 		{elseif $component->getType() === 'masonry'}
 			<i class="bi bi-grid-3x3-gap-fill text-pink"></i>
 			<span class="fw-semibold">Masonry</span>
+		{elseif $component->getType() === 'masonry_item'}
+			{var $tileImage = trim($component->getContent()['main_image_url'] ?? '')}
+			<img n:if="$tileImage !== ''" src="{$tileImage}" alt="" class="image-upload-preview">
+			<i n:if="$tileImage === ''" class="bi bi-image text-pink"></i>
+			<span class="fw-semibold">Dlaždice</span>
+			{var $tileHeading = trim($component->getContent()['heading'] ?? '')}
+			<span n:if="$tileHeading !== ''" class="text-muted small text-truncate" style="max-width: 16rem">{$tileHeading}</span>
 		{elseif $component->getType() === 'cta'}
 			<i class="bi bi-megaphone text-success"></i>
 			<span class="fw-semibold">CTA blok</span>
@@ -194,8 +130,8 @@
 
 {*
  * The editing form of one component (type-specific fields + visibility/save footer).
- * A `columns` container has no fields of its own — it shows a link to its dedicated
- * editing screen where each column is managed as a child component.
+ * The `columns` and `masonry` containers have no fields of their own — they show a link to
+ * their dedicated editing screen where each child component is managed.
  *}
 {define componentForm, App\Entity\PageComponent $component}
 	{var $componentContent = $component->getContent()}
@@ -229,8 +165,8 @@
 				id: 'cmp-' . $componentId . '-image_url',
 				name: 'image_url',
 				value: $componentContent['image_url'] ?? '',
-				label: 'Obrázek na pozadí (nepovinný)'}
-			<div class="form-text mt-n2 mb-3">S obrázkem se hero vykreslí s tmavým překrytím a bílým textem.</div>
+				label: 'Obrázek na pozadí (nepovinný)',
+				hint: 'S obrázkem se hero vykreslí s tmavým překrytím a bílým textem.'}
 
 		{elseif $component->getType() === 'heading'}
 			<div class="mb-3">
@@ -295,26 +231,62 @@
 			</div>
 
 		{elseif $component->getType() === 'masonry'}
-			<div data-masonry-block>
-				<div class="mb-3" data-book-bulk data-upload-endpoint="{link uploadImage!}">
-					<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
-						<span>Přetáhněte sem více obrázků najednou nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span> – ke každému vznikne nový blok s hlavní fotkou.</span>
-						<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-input>
+			<div class="mb-3 d-flex align-items-center justify-content-between gap-3 p-3 bg-light border rounded-3">
+				<div>
+					<div class="fw-semibold mb-1">Počet dlaždic: {count($component->getActiveChildren())}</div>
+					<div class="small text-muted">Každá dlaždice je samostatný blok s hlavní fotkou, nadpisem, textem a galerií. Přidávat, upravovat a řadit je můžete na samostatné stránce.</div>
+				</div>
+				<a n:href="masonry, id => $componentId" class="btn btn-primary btn-sm text-nowrap">
+					<i class="bi bi-pencil-square me-1"></i>Upravit dlaždice
+				</a>
+			</div>
+
+		{elseif $component->getType() === 'masonry_item'}
+			<div class="row g-4" data-masonry-item>
+				<div class="col-md-6">
+					{include imageUploadField,
+						id: 'cmp-' . $componentId . '-main_image_url',
+						name: 'main_image_url',
+						value: $componentContent['main_image_url'] ?? '',
+						label: 'Hlavní obrázek (dlaždice v mřížce)'}
+					<div class="mb-3">
+						<label for="cmp-{$componentId}-main_image_alt" class="form-label">Alt text hlavního obrázku</label>
+						<input type="text" id="cmp-{$componentId}-main_image_alt" name="main_image_alt" class="form-control"
+						       value="{$componentContent['main_image_alt'] ?? ''}" placeholder="Popis obrázku pro čtečky…">
 					</div>
-					<div class="small text-danger mt-1" data-error hidden></div>
+					<div class="mb-3">
+						<label for="cmp-{$componentId}-heading" class="form-label">Nadpis (nepovinný)</label>
+						<input type="text" id="cmp-{$componentId}-heading" name="heading" class="form-control"
+						       value="{$componentContent['heading'] ?? ''}" placeholder="Nadpis zobrazený po rozkliknutí…">
+					</div>
+					<div class="mb-3">
+						<label for="cmp-{$componentId}-text" class="form-label">Text (nepovinný)</label>
+						<textarea id="cmp-{$componentId}-text" name="text" class="form-control" rows="4"
+						          placeholder="Text zobrazený po rozkliknutí…">{$componentContent['text'] ?? ''}</textarea>
+					</div>
 				</div>
-				<div class="small text-muted mb-2" n:if="!empty($componentContent['items'])">
-					<i class="bi bi-grip-vertical"></i> Pořadí bloků i fotek v galerii změníte přetažením za úchyt. Ukládá se s blokem.
+				<div class="col-md-6">
+					<label class="form-label d-block">Další fotky (galerie po rozkliknutí)</label>
+					<div class="mb-2" data-gallery-bulk data-upload-endpoint="{link uploadImage!}">
+						<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
+							<span>Přetáhněte sem více obrázků nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span>.</span>
+							<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-input>
+						</div>
+						<div class="small text-danger mt-1" data-error hidden></div>
+					</div>
+					<div class="small text-muted mb-2" n:if="!empty($componentContent['gallery'])">
+						<i class="bi bi-grip-vertical"></i> Pořadí fotek změníte přetažením za úchyt. Ukládá se s dlaždicí.
+					</div>
+					<div n:inner-foreach="$componentContent['gallery'] ?? [] as $i => $item" data-gallery-items>
+						{include galleryImageRow, index: (string) $i, item: $item, componentId: $componentId}
+					</div>
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-add>
+						<i class="bi bi-plus-lg me-1"></i>Přidat fotku
+					</button>
+					<template data-gallery-template>
+						{include galleryImageRow, index: '__INDEX__', item: [], componentId: $componentId}
+					</template>
 				</div>
-				<div n:inner-foreach="$componentContent['items'] ?? [] as $i => $item" data-books>
-					{include bookRow, index: (string) $i, item: $item, componentId: $componentId}
-				</div>
-				<button type="button" class="btn btn-outline-secondary btn-sm mb-3" data-book-add>
-					<i class="bi bi-plus-lg me-1"></i>Přidat blok
-				</button>
-				<template data-book-template>
-					{include bookRow, index: '__BOOK_INDEX__', item: [], componentId: $componentId}
-				</template>
 			</div>
 
 		{elseif $component->getType() === 'cta'}
@@ -381,9 +353,12 @@
 
 		{/if}
 
-		{* Footer: spacing above/below the block + visibility + save — applies to every type, not just its own fields *}
+		{* Footer: spacing above/below the block + visibility + save — applies to every type, not just its own fields.
+		   A masonry tile sits in its parent's grid, so spacing means nothing there and the selects are left out
+		   (handleSaveComponent then stores the 'sm' fallback, which the tile never uses). *}
+		{var $hasSpacing = $component->getType() !== 'masonry_item'}
 		<div class="row g-3 align-items-center pt-3 border-top mt-1">
-			<div class="col-sm-4">
+			<div n:if="$hasSpacing" class="col-sm-4">
 				<label for="cmp-{$componentId}-spacingTop" class="form-label mb-0 small">Mezera nad blokem</label>
 				<select id="cmp-{$componentId}-spacingTop" name="spacingTop" class="form-select form-select-sm">
 					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
@@ -391,7 +366,7 @@
 					{/foreach}
 				</select>
 			</div>
-			<div class="col-sm-4">
+			<div n:if="$hasSpacing" class="col-sm-4">
 				<label for="cmp-{$componentId}-spacingBottom" class="form-label mb-0 small">Mezera pod blokem</label>
 				<select id="cmp-{$componentId}-spacingBottom" name="spacingBottom" class="form-select form-select-sm">
 					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
@@ -399,7 +374,7 @@
 					{/foreach}
 				</select>
 			</div>
-			<div class="col-sm-4 d-flex align-items-center justify-content-end gap-3">
+			<div n:class="$hasSpacing ? 'col-sm-4' : 'col-12', d-flex, align-items-center, justify-content-end, gap-3">
 				<div class="form-check mb-0">
 					<input type="checkbox" id="cmp-{$componentId}-isVisible" name="isVisible"
 					       class="form-check-input" {if $component->isVisible()}checked{/if}>

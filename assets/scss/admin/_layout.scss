@@ -107,6 +107,7 @@ body {
 .component-card[data-type="image"]         { border-left-color: $orange; }
 .component-card[data-type="columns"]       { border-left-color: $purple; }
 .component-card[data-type="masonry"]       { border-left-color: $pink; }
+.component-card[data-type="masonry_item"]  { border-left-color: $pink; }
 .component-card[data-type="cta"]           { border-left-color: $success; }
 .component-card[data-type="contact_form"]  { border-left-color: $teal; }
 
@@ -175,7 +176,7 @@ body {
 	flex-shrink: 0;
 }
 
-// Masonry item drag & drop reordering (see wireSorting in assets/admin/masonry.js).
+// Masonry gallery photo drag & drop reordering (see wireSorting in assets/admin/masonry.js).
 .masonry-drag-handle {
 	cursor: grab;
 	touch-action: none; // stop the browser from scrolling instead of starting the drag

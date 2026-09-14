@@ -9,7 +9,7 @@ use Doctrine\ORM\Mapping as ORM;
 /**
  * One image file uploaded through the admin (App\Helpers\ImageUploader) and stored under
  * www/uploads/. Independent of where/whether it's actually referenced — content fields that
- * point at an upload (e.g. masonry.items[].main_image_url / .gallery[].image_url, hero.image_url, image.url) just hold its
+ * point at an upload (e.g. a masonry_item's main_image_url / gallery[].image_url, hero.image_url, image.url) just hold its
  * public URL as a plain string, not a foreign key. This table exists purely as an audit trail /
  * foundation for a future media library (cleanup of orphaned files, a picker UI, …); nothing
  * reads it yet beyond ImageUploader writing to it.

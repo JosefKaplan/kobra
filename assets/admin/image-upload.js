@@ -12,7 +12,13 @@ export function wireDropzone(dropzone, fileInput, browseTrigger, onFiles) {
 		e.stopPropagation();
 		fileInput.click();
 	});
-	fileInput.addEventListener('change', () => onFiles(fileInput.files, false));
+	fileInput.addEventListener('change', () => {
+		// Snapshot then clear: a file input only fires `change` when its value changes, so without
+		// the reset picking the same file again (after a failed upload, say) would do nothing.
+		const files = Array.from(fileInput.files);
+		fileInput.value = '';
+		onFiles(files, false);
+	});
 
 	['dragover', 'dragleave', 'drop'].forEach((eventName) => {
 		dropzone.addEventListener(eventName, (e) => {

@@ -25,11 +25,20 @@ use Nette\Utils\Strings;
 
 class PagePresenter extends BasePresenter
 {
-	/** Types allowed inside a `columns` container (no nested containers, no layout components). */
-	private const CHILD_COMPONENT_TYPES = ['heading', 'text_block', 'cta', 'image'];
+	/**
+	 * Container component types and what they may hold: the child types allowed under each
+	 * (never another container), and the maximum number of active children (null = unlimited).
+	 * A type listed as a child of exactly one container (masonry_item) can only ever be created
+	 * under that container — it's not offered at page level and rejected anywhere else.
+	 */
+	private const CONTAINER_TYPES = [
+		// More columns than this stop being columns on any screen.
+		'columns' => ['children' => ['heading', 'text_block', 'cta', 'image'], 'max' => 4],
+		'masonry' => ['children' => ['masonry_item'], 'max' => null],
+	];
 
-	/** More columns than this stop being columns on any screen. */
-	private const MAX_COLUMNS = 4;
+	/** Child types that exist only inside their container (see CONTAINER_TYPES) — no page-level counterpart. */
+	private const CHILD_ONLY_TYPES = ['masonry_item'];
 
 	#[Inject]
 	public PageManager $pageManager;
@@ -184,8 +193,19 @@ class PagePresenter extends BasePresenter
 	/** Dedicated editing screen of one `columns` container — its columns are its child components. */
 	public function actionColumns(int $id): void
 	{
+		$this->setupContainerScreen($id, 'columns');
+	}
+
+	/** Dedicated editing screen of one `masonry` container — its tiles are `masonry_item` child components. */
+	public function actionMasonry(int $id): void
+	{
+		$this->setupContainerScreen($id, 'masonry');
+	}
+
+	private function setupContainerScreen(int $id, string $type): void
+	{
 		$component = $this->pageManager->getComponentById($id);
-		if (!$component || $component->getType() !== 'columns') {
+		if (!$component || $component->getType() !== $type) {
 			$this->error('Komponenta nenalezena.');
 		}
 
@@ -268,32 +288,104 @@ class PagePresenter extends BasePresenter
 		$parent = null;
 		if ($parentId !== null) {
 			$parent = $this->pageManager->getComponentById($parentId);
-			if (!$parent || $parent->getPage()->getId() !== $pageId || $parent->getType() !== 'columns') {
+			if (!$parent || $parent->getPage()->getId() !== $pageId || !isset(self::CONTAINER_TYPES[$parent->getType()])) {
 				$this->error('Neplatná nadřazená komponenta.');
 			}
-			if (!in_array($type, self::CHILD_COMPONENT_TYPES, true)) {
-				$this->error('Tento typ bloku nelze vložit jako sloupec.', IResponse::S400_BadRequest);
+			$container = self::CONTAINER_TYPES[$parent->getType()];
+			if (!in_array($type, $container['children'], true)) {
+				$this->error('Tento typ bloku nelze vložit do této komponenty.', IResponse::S400_BadRequest);
 			}
-			if (count($parent->getActiveChildren()) >= self::MAX_COLUMNS) {
-				$this->flashMessage('Komponenta může mít nejvýše ' . self::MAX_COLUMNS . ' sloupce.', 'warning');
+			if ($container['max'] !== null && count($parent->getActiveChildren()) >= $container['max']) {
+				$this->flashMessage('Komponenta může mít nejvýše ' . $container['max'] . ' vnořené bloky.', 'warning');
 				$this->redirect('this');
 			}
+		} elseif ($this->isChildOnlyType($type)) {
+			$this->error('Tento typ bloku lze vložit jen do nadřazené komponenty.', IResponse::S400_BadRequest);
 		}
 
-		$defaultContent = match($type) {
+		$this->persistNewComponent($page, $parent, $type, self::defaultContent($type));
+
+		$this->flashMessage('Komponenta přidána.', 'success');
+		$this->redirect('this');
+	}
+
+	/**
+	 * Bulk creation of `masonry_item` tiles behind the masonry screen's dropzone: the browser
+	 * uploads the picked files one at a time through uploadImage! (same single-file endpoint as
+	 * every other image widget, so PHP's request-wide post_max_size/max_file_uploads never
+	 * apply) and then POSTs the resulting URLs here — one new tile per URL, appended in order.
+	 */
+	public function handleCreateMasonryItems(int $parentId): void
+	{
+		$this->checkSameSiteRequest();
+
+		$parent = $this->pageManager->getComponentById($parentId);
+		if (!$parent || $parent->getType() !== 'masonry') {
+			$this->error('Komponenta nenalezena.');
+		}
+
+		$post = $this->getHttpRequest()->getPost();
+		$urls = array_values(array_filter(array_map(
+			fn ($url) => trim((string) $url),
+			is_array($post['urls'] ?? null) ? $post['urls'] : [],
+		), fn (string $url) => $url !== ''));
+
+		foreach ($urls as $url) {
+			$content = self::defaultContent('masonry_item');
+			$content['main_image_url'] = $url;
+			// One flush for the whole batch (below): all-or-nothing, and no per-tile changeset pass
+			$this->persistNewComponent($parent->getPage(), $parent, 'masonry_item', $content, flush: false);
+		}
+		if ($urls !== []) {
+			$this->pageManager->save($parent->getPage());
+			$this->flashMessage(count($urls) === 1 ? 'Dlaždice přidána.' : 'Přidáno dlaždic: ' . count($urls) . '.', 'success');
+		}
+		// Files the browser couldn't upload (wrong type, too big, server error) — re-shown here because
+		// the redirect below would otherwise replace the page the dropzone reported them on.
+		$failed = array_values(array_filter(array_map(
+			fn ($message) => Strings::truncate(trim((string) $message), 200),
+			is_array($post['failed'] ?? null) ? array_slice($post['failed'], 0, 20) : [],
+		), fn (string $message) => $message !== ''));
+		if ($failed !== []) {
+			$this->flashMessage('Nepodařilo se nahrát: ' . implode(' · ', $failed), 'warning');
+		}
+		$this->redirect('this');
+	}
+
+	/** A type allowed only as a child of some container — never offered or accepted at page level. */
+	private function isChildOnlyType(string $type): bool
+	{
+		return in_array($type, self::CHILD_ONLY_TYPES, true);
+	}
+
+	/** @return array<string, mixed> */
+	private static function defaultContent(string $type): array
+	{
+		return match($type) {
 			'hero'          => ['heading' => '', 'subheading' => '', 'button_text' => '', 'button_url' => '', 'image_url' => ''],
 			'heading'       => ['text' => '', 'level' => 'h2', 'align' => 'start'],
 			'text_block'    => ['content' => ''],
 			'image'         => ['url' => '', 'alt' => '', 'caption' => ''],
 			'columns'       => [],
-			'masonry'       => ['items' => []],
+			'masonry'       => [],
+			'masonry_item'  => ['main_image_url' => '', 'main_image_alt' => '', 'heading' => '', 'text' => '', 'gallery' => []],
 			'cta'           => ['heading' => '', 'body' => '', 'button_text' => '', 'button_url' => '', 'button_style' => 'primary'],
 			'contact_form'  => ['heading' => '', 'action_url' => '', 'button_text' => 'Odeslat', 'email_placeholder' => 'Váš e-mail…', 'message_placeholder' => 'Vaše zpráva…'],
 			default         => [],
 		};
+	}
 
-		// max+1 within the sibling group (children of the same parent, or page roots);
-		// count() could duplicate an existing order after deletions
+	/**
+	 * Builds and attaches one new component at the end of its sibling group (children of $parent,
+	 * or the page's roots) and, unless $flush is false, saves the page. With $flush false the
+	 * caller saves once for a whole batch — the sibling scan still sees the earlier additions,
+	 * since addChild()/addComponent() update the in-memory collections immediately.
+	 *
+	 * @param array<string, mixed> $content
+	 */
+	private function persistNewComponent(Page $page, ?PageComponent $parent, string $type, array $content, bool $flush = true): PageComponent
+	{
+		// max+1 within the sibling group; count() could duplicate an existing order after deletions
 		$siblings = $parent !== null ? $parent->getActiveChildren() : $page->getRootComponents();
 		$maxSortOrder = -1;
 		foreach ($siblings as $existing) {
@@ -303,7 +395,7 @@ class PagePresenter extends BasePresenter
 		$component = new PageComponent();
 		$component->setPage($page);
 		$component->setType($type);
-		$component->setContent($defaultContent);
+		$component->setContent($content);
 		$component->setSortOrder($maxSortOrder + 1);
 		// 'sm' is the explicit default spacing shown pre-selected in the editor — new components start with it
 		// rather than the ambiguous "use whatever the type happens to hardcode" null previously defaulted to.
@@ -315,10 +407,11 @@ class PagePresenter extends BasePresenter
 		}
 
 		$page->addComponent($component);
-		$this->pageManager->save($page);
+		if ($flush) {
+			$this->pageManager->save($page);
+		}
 
-		$this->flashMessage('Komponenta přidána.', 'success');
-		$this->redirect('this');
+		return $component;
 	}
 
 	public function handleSaveComponent(int $componentId): void
@@ -355,31 +448,22 @@ class PagePresenter extends BasePresenter
 				'caption' => $post['caption'] ?? '',
 			],
 			'columns' => [],
-			'masonry' => [
-				// Rows arrive as items[<bookIndex>][main_image_url|main_image_alt|heading|text|is_visible]
-				// plus a nested items[<bookIndex>][gallery][<galleryIndex>][image_url|alt] (see masonry.js);
-				// indices at both levels may have gaps after row removal, array_values() reindexes them.
-				// is_visible is a checkbox — like the component-level one, it's only present in the
-				// POST at all when checked. There is no more link_url: a tile always opens its book now,
-				// so an item saved under the old shape silently loses its link the next time it's saved
-				// (see App\Helpers\MasonryItem::normalize for reading the old shape back until then).
-				'items' => array_values(array_filter(array_map(
-					fn ($item) => [
-						'main_image_url' => trim((string) ($item['main_image_url'] ?? '')),
-						'main_image_alt' => trim((string) ($item['main_image_alt'] ?? '')),
-						'heading'        => trim((string) ($item['heading'] ?? '')),
-						'text'           => trim((string) ($item['text'] ?? '')),
-						'gallery'        => array_values(array_filter(array_map(
-							fn ($g) => [
-								'image_url' => trim((string) ($g['image_url'] ?? '')),
-								'alt'       => trim((string) ($g['alt'] ?? '')),
-							],
-							is_array($item['gallery'] ?? null) ? $item['gallery'] : [],
-						), fn (array $g) => $g['image_url'] !== '')),
-						'is_visible' => isset($item['is_visible']),
+			'masonry' => [],
+			'masonry_item' => [
+				'main_image_url' => trim((string) ($post['main_image_url'] ?? '')),
+				'main_image_alt' => trim((string) ($post['main_image_alt'] ?? '')),
+				'heading'        => trim((string) ($post['heading'] ?? '')),
+				'text'           => trim((string) ($post['text'] ?? '')),
+				// Gallery rows arrive as gallery[<index>][image_url|alt] (see masonry.js); indices may
+				// have gaps after row removal, array_values() reindexes them. Their order is the
+				// POST-body order — that's the only place gallery order lives.
+				'gallery'        => array_values(array_filter(array_map(
+					fn ($g) => [
+						'image_url' => trim((string) ($g['image_url'] ?? '')),
+						'alt'       => trim((string) ($g['alt'] ?? '')),
 					],
-					is_array($post['items'] ?? null) ? $post['items'] : [],
-				), fn (array $item) => $item['main_image_url'] !== '')),
+					is_array($post['gallery'] ?? null) ? $post['gallery'] : [],
+				), fn (array $g) => $g['image_url'] !== '')),
 			],
 			'cta' => [
 				'heading'      => $post['heading'] ?? '',
@@ -415,8 +499,8 @@ class PagePresenter extends BasePresenter
 
 	/**
 	 * AJAX endpoint behind the reusable image-upload widget (admin.js, `input[data-image-upload]`)
-	 * — used by any content field that holds an image URL (hero.image_url, image.url, masonry
-	 * items), not tied to a specific component. Responds with JSON, never redirects.
+	 * — used by any content field that holds an image URL (hero.image_url, image.url, a masonry
+	 * tile's main image and gallery), not tied to a specific component. Responds with JSON, never redirects.
 	 */
 	public function handleUploadImage(): void
 	{
@@ -424,6 +508,15 @@ class PagePresenter extends BasePresenter
 
 		$file = $this->getHttpRequest()->getFile('image');
 		if (!$file instanceof FileUpload) {
+			// A body over php.ini's post_max_size never reaches us as a file at all — PHP drops
+			// $_FILES (and $_POST) wholesale, so without this check the admin would be told they
+			// sent nothing. (The per-file upload_max_filesize case does arrive, as UPLOAD_ERR_INI_SIZE,
+			// and is worded by ImageUploader.)
+			$contentLength = (int) ($this->getHttpRequest()->getHeader('Content-Length') ?? 0);
+			$postMax = self::iniBytes((string) ini_get('post_max_size'));
+			if ($postMax > 0 && $contentLength > $postMax) {
+				$this->sendJson(['error' => 'Soubor je příliš velký pro aktuální nastavení serveru (post_max_size v php.ini).']);
+			}
 			// sendJson() never actually returns (it throws Nette\Application\AbortException
 			// internally) — PHPStan's Nette stubs know this, so $file is narrowed below.
 			$this->sendJson(['error' => 'Nebyl nahrán žádný soubor.']);
@@ -483,7 +576,7 @@ class PagePresenter extends BasePresenter
 
 		$component = $this->pageManager->getComponentById($componentId);
 		if ($component) {
-			// Soft delete — a deleted container takes its columns with it
+			// Soft delete — a deleted container takes its children (columns, masonry tiles) with it
 			$deletedBy = $this->getUserEntity();
 			$component->markDeleted($deletedBy);
 			foreach ($component->getActiveChildren() as $child) {
@@ -493,6 +586,23 @@ class PagePresenter extends BasePresenter
 			$this->flashMessage('Komponenta smazána.', 'success');
 		}
 		$this->redirect('this');
+	}
+
+	/** php.ini shorthand ("8M", "512K", "1G", plain bytes) to bytes; 0 for empty/unlimited. */
+	private static function iniBytes(string $value): int
+	{
+		$value = trim($value);
+		if ($value === '' || $value === '-1') {
+			return 0;
+		}
+		$unit = strtolower(substr($value, -1));
+		$number = (int) $value;
+		return match ($unit) {
+			'g' => $number * 1024 * 1024 * 1024,
+			'm' => $number * 1024 * 1024,
+			'k' => $number * 1024,
+			default => $number,
+		};
 	}
 
 	// Same SameSite-cookie check Nette\Application\UI\Form does internally, for the raw HTML forms in edit.latte which carry no CSRF token.
