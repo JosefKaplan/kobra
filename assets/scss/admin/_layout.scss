@@ -106,6 +106,7 @@ body {
 .component-card[data-type="text_block"]    { border-left-color: $secondary; }
 .component-card[data-type="image"]         { border-left-color: $orange; }
 .component-card[data-type="columns"]       { border-left-color: $purple; }
+.component-card[data-type="masonry"]       { border-left-color: $pink; }
 .component-card[data-type="cta"]           { border-left-color: $success; }
 .component-card[data-type="contact_form"]  { border-left-color: $teal; }
 
@@ -113,6 +114,75 @@ body {
 .text-purple { color: $purple; }
 .text-orange { color: $orange; }
 .text-teal   { color: $teal; }
+.text-pink   { color: $pink; }
+
+// Drag & drop / click-to-browse image upload widget (see enhanceImageUpload() in admin.js
+// and the imageUploadField Latte define in _componentEditor.latte).
+.image-upload-dropzone {
+	position: relative; // anchors .image-upload-spinner-overlay while a request is in flight
+	cursor: pointer;
+	transition: background-color .1s ease, border-color .1s ease;
+
+	&:hover {
+		background-color: $light;
+	}
+}
+
+.image-upload-dropzone-active {
+	background-color: rgba($primary, .08);
+	border-color: $primary !important;
+}
+
+// Appended on top of (not replacing) the existing hint/preview markup while a request is in
+// flight — see the comment in admin.js's upload() for why it isn't a straight innerHTML swap.
+.image-upload-dropzone-loading {
+	pointer-events: none;
+
+	> :not(.image-upload-spinner-overlay) {
+		visibility: hidden;
+	}
+}
+
+.image-upload-spinner-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: .5rem;
+	color: $primary;
+	font-size: .875rem;
+}
+
+.image-upload-spinner {
+	width: 1rem;
+	height: 1rem;
+	border: 2px solid rgba($primary, .25);
+	border-top-color: $primary;
+	border-radius: 50%;
+	animation: image-upload-spin .6s linear infinite;
+}
+
+@keyframes image-upload-spin {
+	to { transform: rotate(360deg); }
+}
+
+.image-upload-preview {
+	width: 48px;
+	height: 48px;
+	object-fit: cover;
+	border-radius: $border-radius-sm;
+	flex-shrink: 0;
+}
+
+// Masonry item drag & drop reordering (see wireSorting in assets/admin/masonry.js).
+.masonry-drag-handle {
+	cursor: grab;
+	touch-action: none; // stop the browser from scrolling instead of starting the drag
+}
+.masonry-item-dragging {
+	opacity: .5;
+}
 
 // Quill mounts on a div that becomes .ql-container, whose stylesheet sets height:100%.
 // Inside a grid row the stretched .col-* has a definite height, so 100% suddenly resolves

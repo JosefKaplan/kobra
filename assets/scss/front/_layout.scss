@@ -85,6 +85,61 @@ main {
 	}
 }
 
+// CMS component: masonry — a grid of square image tiles ("books"); clicking one opens a modal
+// with its full detail (see the `masonry` case in components.latte and .masonry-book-modal below).
+// .ratio.ratio-1x1 (Bootstrap) makes each tile a square regardless of the source image's
+// aspect ratio; object-fit: cover crops rather than stretches/letterboxes it.
+.page-masonry {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+	gap: 1rem;
+
+	img {
+		object-fit: cover;
+		border-radius: $border-radius;
+	}
+}
+
+// Each tile is a <button> (always clickable — it opens its book's modal), reset back to plain
+// block-level tap target so Bootstrap's .ratio sizing (which targets the tile itself) still applies.
+.page-masonry-item {
+	display: block;
+	width: 100%;
+	overflow: hidden;
+	border-radius: $border-radius;
+	background: none;
+	border: 0;
+	padding: 0;
+	transition: transform .15s ease;
+
+	&:hover {
+		transform: scale(1.03);
+	}
+}
+
+// One book's detail, opened from its .page-masonry-item tile. Main photo + optional
+// heading/text on the left, gallery photos (if any) on the right.
+.masonry-book-modal {
+	.book-main img {
+		width: 100%;
+		border-radius: $border-radius;
+	}
+
+	.book-gallery {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+		gap: .5rem;
+		align-content: start;
+
+		img {
+			width: 100%;
+			aspect-ratio: 1 / 1;
+			object-fit: cover;
+			border-radius: $border-radius-sm;
+		}
+	}
+}
+
 // CMS component: contact form — a narrow centered column reads better than full width
 .page-contact-form form {
 	max-width: 480px;

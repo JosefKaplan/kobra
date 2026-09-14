@@ -1,0 +1,9 @@
+# Defense in depth: this directory only ever holds uploaded images (validated by
+# App\Helpers\ImageUploader against real image signatures, never by file extension),
+# but in case anything ever slips through, make sure it can't be executed as a script.
+<IfModule mod_php.c>
+	php_flag engine off
+</IfModule>
+<FilesMatch "\.ph(p[3457]?|t|tml)$">
+	Require all denied
+</FilesMatch>

@@ -7,6 +7,8 @@ use App\Entity\PageComponent;
 use App\Entity\LayoutBlock;
 use App\Helpers\BootstrapFormRenderer;
 use App\Helpers\FormHelper;
+use App\Helpers\ImageUploadException;
+use App\Helpers\ImageUploader;
 use App\Helpers\RichTextSanitizer;
 use App\Models\LayoutBlockManager;
 use App\Models\PageManager;
@@ -17,6 +19,7 @@ use Contributte\Datagrid\Datagrid;
 use Contributte\Datagrid\Exception\DatagridException;
 use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
+use Nette\Http\FileUpload;
 use Nette\Http\IResponse;
 use Nette\Utils\Strings;
 
@@ -39,6 +42,9 @@ class PagePresenter extends BasePresenter
 
 	#[Inject]
 	public LayoutBlockManager $layoutBlockManager;
+
+	#[Inject]
+	public ImageUploader $imageUploader;
 
 	protected function startup(): void
 	{
@@ -280,6 +286,7 @@ class PagePresenter extends BasePresenter
 			'text_block'    => ['content' => ''],
 			'image'         => ['url' => '', 'alt' => '', 'caption' => ''],
 			'columns'       => [],
+			'masonry'       => ['items' => []],
 			'cta'           => ['heading' => '', 'body' => '', 'button_text' => '', 'button_url' => '', 'button_style' => 'primary'],
 			'contact_form'  => ['heading' => '', 'action_url' => '', 'button_text' => 'Odeslat', 'email_placeholder' => 'Váš e-mail…', 'message_placeholder' => 'Vaše zpráva…'],
 			default         => [],
@@ -348,6 +355,32 @@ class PagePresenter extends BasePresenter
 				'caption' => $post['caption'] ?? '',
 			],
 			'columns' => [],
+			'masonry' => [
+				// Rows arrive as items[<bookIndex>][main_image_url|main_image_alt|heading|text|is_visible]
+				// plus a nested items[<bookIndex>][gallery][<galleryIndex>][image_url|alt] (see masonry.js);
+				// indices at both levels may have gaps after row removal, array_values() reindexes them.
+				// is_visible is a checkbox — like the component-level one, it's only present in the
+				// POST at all when checked. There is no more link_url: a tile always opens its book now,
+				// so an item saved under the old shape silently loses its link the next time it's saved
+				// (see App\Helpers\MasonryItem::normalize for reading the old shape back until then).
+				'items' => array_values(array_filter(array_map(
+					fn ($item) => [
+						'main_image_url' => trim((string) ($item['main_image_url'] ?? '')),
+						'main_image_alt' => trim((string) ($item['main_image_alt'] ?? '')),
+						'heading'        => trim((string) ($item['heading'] ?? '')),
+						'text'           => trim((string) ($item['text'] ?? '')),
+						'gallery'        => array_values(array_filter(array_map(
+							fn ($g) => [
+								'image_url' => trim((string) ($g['image_url'] ?? '')),
+								'alt'       => trim((string) ($g['alt'] ?? '')),
+							],
+							is_array($item['gallery'] ?? null) ? $item['gallery'] : [],
+						), fn (array $g) => $g['image_url'] !== '')),
+						'is_visible' => isset($item['is_visible']),
+					],
+					is_array($post['items'] ?? null) ? $post['items'] : [],
+				), fn (array $item) => $item['main_image_url'] !== '')),
+			],
 			'cta' => [
 				'heading'      => $post['heading'] ?? '',
 				'body'         => $this->richTextSanitizer->sanitize($post['body'] ?? ''),
@@ -378,6 +411,31 @@ class PagePresenter extends BasePresenter
 
 		$this->flashMessage('Komponenta uložena.', 'success');
 		$this->redirect('this');
+	}
+
+	/**
+	 * AJAX endpoint behind the reusable image-upload widget (admin.js, `input[data-image-upload]`)
+	 * — used by any content field that holds an image URL (hero.image_url, image.url, masonry
+	 * items), not tied to a specific component. Responds with JSON, never redirects.
+	 */
+	public function handleUploadImage(): void
+	{
+		$this->checkSameSiteRequest();
+
+		$file = $this->getHttpRequest()->getFile('image');
+		if (!$file instanceof FileUpload) {
+			// sendJson() never actually returns (it throws Nette\Application\AbortException
+			// internally) — PHPStan's Nette stubs know this, so $file is narrowed below.
+			$this->sendJson(['error' => 'Nebyl nahrán žádný soubor.']);
+		}
+
+		try {
+			$upload = $this->imageUploader->upload($file, $this->getUserEntity());
+		} catch (ImageUploadException $e) {
+			$this->sendJson(['error' => $e->getMessage()]);
+		}
+
+		$this->sendJson(['url' => $upload->getUrl()]);
 	}
 
 	public function handleMoveComponent(int $componentId, string $direction): void

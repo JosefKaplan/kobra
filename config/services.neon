@@ -2,6 +2,7 @@ services:
 	- App\Core\RouterFactory::createRouter
 	- App\Core\Security\Authenticator
 	- App\Helpers\RichTextSanitizer(%tempDir%/htmlpurifier)
+	- App\Helpers\ImageUploader(%wwwDir%/uploads)
 
 
 search:

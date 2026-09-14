@@ -53,6 +53,47 @@
 			<figcaption n:if="trim($c['caption'] ?? '') !== ''" class="small text-muted mt-2">{$c['caption']}</figcaption>
 		</figure>
 
+	{case 'masonry'}
+		{* Each item is a "book": a main image shown as the grid tile, plus an optional heading/text
+		   and an optional photo gallery, both revealed in a modal when the tile is clicked. Items are
+		   normalized through MasonryItem::normalize() so items saved before this shape existed
+		   (pre-book: {image_url, link_url, alt, is_visible}) still render correctly. *}
+		{var $items = array_filter(array_map(fn (array $item) => App\Helpers\MasonryItem::normalize($item), $c['items'] ?? []), fn (array $book) => $book['is_visible'])}
+		<div n:if="count($items)" class="page-masonry mb-4" n:attr="style: $spacingStyle">
+			{foreach $items as $i => $book}
+				{var $modalId = 'masonry-book-' . $component->getId() . '-' . $i}
+				<button type="button" class="page-masonry-item ratio ratio-1x1"
+				        data-bs-toggle="modal" data-bs-target="#{$modalId}"
+				        aria-label="{$book['heading'] !== '' ? $book['heading'] : 'Zobrazit detail'}">
+					<img src="{$book['main_image_url']}" alt="{$book['main_image_alt']}" loading="lazy">
+				</button>
+
+				<div class="modal fade masonry-book-modal" id="{$modalId}" tabindex="-1" aria-hidden="true">
+					<div class="modal-dialog modal-lg modal-dialog-centered">
+						<div class="modal-content">
+							<button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+							<div class="modal-body row g-4">
+								{* Without a gallery, the main image/caption is the whole book — give it the full
+								   width instead of leaving the other half of the modal empty. *}
+								<div n:class="book-main, $book['gallery'] ? 'col-md-6' : 'col-12'">
+									<img src="{$book['main_image_url']}" alt="{$book['main_image_alt']}" loading="lazy">
+									<div n:if="$book['heading'] !== '' || $book['text'] !== ''" class="book-caption mt-3">
+										<h3 n:if="$book['heading'] !== ''" class="h4">{$book['heading']}</h3>
+										<p n:if="$book['text'] !== ''">{$book['text']|breakLines}</p>
+									</div>
+								</div>
+								<div n:if="$book['gallery']" class="col-md-6 book-gallery">
+									{foreach $book['gallery'] as $g}
+										<img src="{$g['image_url']}" alt="{$g['alt']}" loading="lazy">
+									{/foreach}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			{/foreach}
+		</div>
+
 	{case 'columns'}
 		{* Container: each visible child component is one equal-width column (.col-md splits
 		   the row evenly); hidden children take no space. Stacks vertically below md. *}

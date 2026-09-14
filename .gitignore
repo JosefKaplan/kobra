@@ -1,6 +1,9 @@
 /vendor/
 /node_modules/
 /www/assets/
+/www/uploads/*
+!/www/uploads/.gitkeep
+!/www/uploads/.htaccess
 /config/local.neon
 /temp/cache/
 /temp/sessions/
