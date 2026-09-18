@@ -47,6 +47,10 @@
 			{/foreach}
 		</div>
 
+		{foreach $tiles as $tile}
+			{include masonryItemModal, component: $tile}
+		{/foreach}
+
 	{case 'masonry_item'}
 		{var $mainImage = trim($componentContent['main_image_url'] ?? '')}
 		{var $heading = trim($componentContent['heading'] ?? '')}
@@ -58,28 +62,6 @@
 		        aria-label="{$heading !== '' ? $heading : 'Zobrazit detail'}">
 			<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 		</button>
-
-		<div n:if="$mainImage !== ''" class="modal fade masonry-book-modal" id="{$modalId}" tabindex="-1" aria-hidden="true">
-			<div class="modal-dialog modal-lg modal-dialog-centered">
-				<div class="modal-content">
-					<button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Zavřít"></button>
-					<div class="modal-body row g-4">
-						<div n:class="book-main, count($gallery) ? 'col-md-6' : 'col-12'">
-							<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
-							<div n:if="$heading !== '' || $text !== ''" class="book-caption mt-3">
-								<h3 n:if="$heading !== ''" class="h4">{$heading}</h3>
-								<p n:if="$text !== ''">{$text|breakLines}</p>
-							</div>
-						</div>
-						<div n:if="count($gallery)" class="col-md-6 book-gallery">
-							{foreach $gallery as $g}
-								<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy">
-							{/foreach}
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
 
 	{case 'columns'}
 		<div class="row g-4 mb-4" n:attr="style: $spacingStyle">
@@ -122,6 +104,35 @@
 	{default}
 		{* unknown component type — do not render anything on the public site *}
 	{/switch}
+{/define}
+
+{define masonryItemModal, App\Entity\PageComponent $component}
+	{var $componentContent = $component->getContent()}
+	{var $mainImage = trim($componentContent['main_image_url'] ?? '')}
+	{var $heading = trim($componentContent['heading'] ?? '')}
+	{var $text = trim($componentContent['text'] ?? '')}
+	{var $gallery = array_filter(is_array($componentContent['gallery'] ?? null) ? $componentContent['gallery'] : [], fn ($g) => is_array($g) && trim($g['image_url'] ?? '') !== '')}
+	<div n:if="$mainImage !== ''" class="modal fade masonry-book-modal" id="masonry-item-{$component->getId()}" tabindex="-1" aria-hidden="true">
+		<div class="modal-dialog modal-lg modal-dialog-centered">
+			<div class="modal-content">
+				<button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+				<div class="modal-body row g-4">
+					<div n:class="book-main, count($gallery) ? 'col-md-6' : 'col-12'">
+						<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+						<div n:if="$heading !== '' || $text !== ''" class="book-caption mt-3">
+							<h3 n:if="$heading !== ''" class="h4">{$heading}</h3>
+							<p n:if="$text !== ''">{$text|breakLines}</p>
+						</div>
+					</div>
+					<div n:if="count($gallery)" class="col-md-6 book-gallery">
+						{foreach $gallery as $g}
+							<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy">
+						{/foreach}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
 {/define}
 
 {var $rootComponents = $page->getRootComponents()}
