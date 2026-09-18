@@ -30,7 +30,7 @@ class Page
     private bool $isVisible = true;
 
     /** @var Collection<int, PageComponent> */
-    #[ORM\OneToMany(mappedBy: 'page', targetEntity: PageComponent::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: PageComponent::class, mappedBy: 'page', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['sortOrder' => 'ASC'])]
     private Collection $components;
 
@@ -119,7 +119,7 @@ class Page
     }
 
     /**
-     * Top-level components only — children of container components (columns) are
+     * Top-level components only — children of container components (columns, masonry) are
      * rendered by their parent, never in the page's main flow. Soft-deleted
      * components are excluded.
      *

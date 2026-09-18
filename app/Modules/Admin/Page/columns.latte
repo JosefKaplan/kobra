@@ -12,7 +12,7 @@
 			<i class="bi bi-arrow-left me-1"></i>Zpět na stránku
 		</a>
 		<h1 class="h3 mb-0">
-			<i class="bi bi-layout-three-columns me-2 text-purple"></i>Sloupce
+			<i class="bi bi-layout-three-columns me-2 text-type-columns"></i>Sloupce
 			<span class="text-muted fw-normal">– {$page->getTitle()}</span>
 		</h1>
 	</div>
@@ -25,22 +25,22 @@
 			<li><h6 class="dropdown-header small text-muted">Typ obsahu sloupce</h6></li>
 			<li>
 				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'heading', parentId => $component->getId()">
-					<i class="bi bi-type-h2 me-2 text-info"></i>Nadpis
+					<i class="bi bi-type-h2 me-2 text-type-heading"></i>Nadpis
 				</a>
 			</li>
 			<li>
 				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'text_block', parentId => $component->getId()">
-					<i class="bi bi-text-paragraph me-2 text-secondary"></i>Textový blok
+					<i class="bi bi-text-paragraph me-2 text-type-text_block"></i>Textový blok
 				</a>
 			</li>
 			<li>
 				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'cta', parentId => $component->getId()">
-					<i class="bi bi-megaphone me-2 text-success"></i>CTA blok
+					<i class="bi bi-megaphone me-2 text-type-cta"></i>CTA blok
 				</a>
 			</li>
 			<li>
 				<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'image', parentId => $component->getId()">
-					<i class="bi bi-card-image me-2 text-orange"></i>Obrázek
+					<i class="bi bi-card-image me-2 text-type-image"></i>Obrázek
 				</a>
 			</li>
 		</ul>

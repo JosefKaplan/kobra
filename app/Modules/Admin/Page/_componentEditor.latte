@@ -4,6 +4,60 @@
  *}
 
 {*
+ * One image-URL field, enhanced client-side (admin.js, `enhanceImageUpload`) with a drag & drop /
+ * click-to-browse upload widget on top of the plain text input — the text input stays the value
+ * that's actually posted (and the no-JS fallback: paste a URL directly), same as before this
+ * existed. Used for any content field that holds an image URL: hero.image_url, image.url, and
+ * a masonry tile's main image / gallery photos (see galleryImageRow below).
+ *}
+{define imageUploadField, string $id, string $name, string $value, string $label, string $placeholder = 'https://…', ?string $hint = null}
+	<div class="mb-3" data-image-upload data-upload-endpoint="{link uploadImage!}">
+		<label for="{$id}" class="form-label">{$label}</label>
+		<input type="text" id="{$id}" name="{$name}" class="form-control mb-2"
+		       value="{$value}" placeholder="{$placeholder}" data-image-upload-value>
+		<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-image-upload-dropzone>
+			<img n:if="trim($value) !== ''" src="{$value}" class="image-upload-preview" data-image-upload-preview alt="">
+			<span data-image-upload-hint>Přetáhněte obrázek sem nebo <span class="text-primary text-decoration-underline" data-image-upload-browse>vyberte soubor</span></span>
+			<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="Vybrat obrázek" data-image-upload-input>
+		</div>
+		<div class="small text-danger mt-1" data-image-upload-error hidden></div>
+		<div n:if="$hint !== null" class="form-text">{$hint}</div>
+	</div>
+{/define}
+
+{*
+ * One photo of a `masonry_item` tile's gallery (image + alt text + grip handle + remove).
+ * Rendered both for existing photos (componentForm below) and — with $index as the literal
+ * placeholder string '__INDEX__' — as the `<template>` masonry.js clones and renumbers when
+ * "Přidat fotku" is clicked or the bulk dropzone finishes an upload (see `data-gallery-template`).
+ *}
+{define galleryImageRow, string $index, array $item, int $componentId}
+	<div class="row g-2 align-items-start mb-2 masonry-item" data-gallery-item>
+		<div class="col-8">
+			{include imageUploadField,
+				id: 'cmp-' . $componentId . '-gallery-' . $index . '-image',
+				name: 'gallery[' . $index . '][image_url]',
+				value: $item['image_url'] ?? '',
+				label: 'Fotka'}
+		</div>
+		<div class="col-3">
+			<label for="cmp-{$componentId}-gallery-{$index}-alt" class="form-label small">Alt text</label>
+			<input type="text" id="cmp-{$componentId}-gallery-{$index}-alt" name="gallery[{$index}][alt]" class="form-control form-control-sm"
+			       value="{$item['alt'] ?? ''}" placeholder="Popis obrázku…">
+		</div>
+		<div class="col-1 pt-4 d-flex gap-1">
+			<button type="button" class="btn btn-outline-secondary btn-sm masonry-drag-handle" data-gallery-item-drag-handle
+			        title="Přetáhněte pro změnu pořadí" aria-label="Přetáhněte pro změnu pořadí">
+				<i class="bi bi-grip-vertical"></i>
+			</button>
+			<button type="button" class="btn btn-outline-danger btn-sm" data-gallery-item-remove title="Odebrat fotku">
+				<i class="bi bi-trash"></i>
+			</button>
+		</div>
+	</div>
+{/define}
+
+{*
  * Card header content: type icon + name, hidden badge, move arrows, delete.
  * $horizontal switches the arrow icons/titles for side-by-side lists (columns screen);
  * the moveComponent! direction stays up/down ("up" = towards the start of the list).
@@ -12,25 +66,35 @@
 	{var int $componentId = $component->getId()}
 	<div class="d-flex align-items-center gap-2">
 		{if $component->getType() === 'hero'}
-			<i class="bi bi-image text-primary"></i>
+			<i class="bi bi-image text-type-hero"></i>
 			<span class="fw-semibold">Hero sekce</span>
 		{elseif $component->getType() === 'heading'}
-			<i class="bi bi-type-h2 text-info"></i>
+			<i class="bi bi-type-h2 text-type-heading"></i>
 			<span class="fw-semibold">Nadpis</span>
 		{elseif $component->getType() === 'text_block'}
-			<i class="bi bi-text-paragraph text-secondary"></i>
+			<i class="bi bi-text-paragraph text-type-text_block"></i>
 			<span class="fw-semibold">Textový blok</span>
 		{elseif $component->getType() === 'image'}
-			<i class="bi bi-card-image text-orange"></i>
+			<i class="bi bi-card-image text-type-image"></i>
 			<span class="fw-semibold">Obrázek</span>
 		{elseif $component->getType() === 'columns'}
-			<i class="bi bi-layout-three-columns text-purple"></i>
+			<i class="bi bi-layout-three-columns text-type-columns"></i>
 			<span class="fw-semibold">Sloupce</span>
+		{elseif $component->getType() === 'masonry'}
+			<i class="bi bi-grid-3x3-gap-fill text-type-masonry"></i>
+			<span class="fw-semibold">Masonry</span>
+		{elseif $component->getType() === 'masonry_item'}
+			{var $tileImage = trim($component->getContent()['main_image_url'] ?? '')}
+			<img n:if="$tileImage !== ''" src="{$tileImage}" alt="" class="image-upload-preview">
+			<i n:if="$tileImage === ''" class="bi bi-image text-type-masonry"></i>
+			<span class="fw-semibold">Dlaždice</span>
+			{var $tileHeading = trim($component->getContent()['heading'] ?? '')}
+			<span n:if="$tileHeading !== ''" class="text-muted small text-truncate" style="max-width: 16rem">{$tileHeading}</span>
 		{elseif $component->getType() === 'cta'}
-			<i class="bi bi-megaphone text-success"></i>
+			<i class="bi bi-megaphone text-type-cta"></i>
 			<span class="fw-semibold">CTA blok</span>
 		{elseif $component->getType() === 'contact_form'}
-			<i class="bi bi-envelope-paper text-teal"></i>
+			<i class="bi bi-envelope-paper text-type-contact_form"></i>
 			<span class="fw-semibold">Kontaktní formulář</span>
 		{else}
 			<i class="bi bi-puzzle text-muted"></i>
@@ -66,8 +130,8 @@
 
 {*
  * The editing form of one component (type-specific fields + visibility/save footer).
- * A `columns` container has no fields of its own — it shows a link to its dedicated
- * editing screen where each column is managed as a child component.
+ * The `columns` and `masonry` containers have no fields of their own — they show a link to
+ * their dedicated editing screen where each child component is managed.
  *}
 {define componentForm, App\Entity\PageComponent $component}
 	{var $componentContent = $component->getContent()}
@@ -97,12 +161,12 @@
 					       value="{$componentContent['button_url'] ?? ''}" placeholder="/kontakt nebo https://…">
 				</div>
 			</div>
-			<div class="mb-3">
-				<label for="cmp-{$componentId}-image_url" class="form-label">Obrázek na pozadí (URL, nepovinné)</label>
-				<input type="text" id="cmp-{$componentId}-image_url" name="image_url" class="form-control"
-				       value="{$componentContent['image_url'] ?? ''}" placeholder="https://…">
-				<div class="form-text">S obrázkem se hero vykreslí s tmavým překrytím a bílým textem.</div>
-			</div>
+			{include imageUploadField,
+				id: 'cmp-' . $componentId . '-image_url',
+				name: 'image_url',
+				value: $componentContent['image_url'] ?? '',
+				label: 'Obrázek na pozadí (nepovinný)',
+				hint: 'S obrázkem se hero vykreslí s tmavým překrytím a bílým textem.'}
 
 		{elseif $component->getType() === 'heading'}
 			<div class="mb-3">
@@ -137,11 +201,11 @@
 			</div>
 
 		{elseif $component->getType() === 'image'}
-			<div class="mb-3">
-				<label for="cmp-{$componentId}-url" class="form-label fw-semibold">URL obrázku</label>
-				<input type="text" id="cmp-{$componentId}-url" name="url" class="form-control"
-				       value="{$componentContent['url'] ?? ''}" placeholder="https://…">
-			</div>
+			{include imageUploadField,
+				id: 'cmp-' . $componentId . '-url',
+				name: 'url',
+				value: $componentContent['url'] ?? '',
+				label: 'Obrázek'}
 			<div class="row g-3 mb-3">
 				<div class="col-sm-6">
 					<label for="cmp-{$componentId}-alt" class="form-label">Alternativní text</label>
@@ -164,6 +228,65 @@
 				<a n:href="columns, id => $componentId" class="btn btn-primary btn-sm text-nowrap">
 					<i class="bi bi-pencil-square me-1"></i>Upravit sloupce
 				</a>
+			</div>
+
+		{elseif $component->getType() === 'masonry'}
+			<div class="mb-3 d-flex align-items-center justify-content-between gap-3 p-3 bg-light border rounded-3">
+				<div>
+					<div class="fw-semibold mb-1">Počet dlaždic: {count($component->getActiveChildren())}</div>
+					<div class="small text-muted">Každá dlaždice je samostatný blok s hlavní fotkou, nadpisem, textem a galerií. Přidávat, upravovat a řadit je můžete na samostatné stránce.</div>
+				</div>
+				<a n:href="masonry, id => $componentId" class="btn btn-primary btn-sm text-nowrap">
+					<i class="bi bi-pencil-square me-1"></i>Upravit dlaždice
+				</a>
+			</div>
+
+		{elseif $component->getType() === 'masonry_item'}
+			<div class="row g-4" data-masonry-item>
+				<div class="col-md-6">
+					{include imageUploadField,
+						id: 'cmp-' . $componentId . '-main_image_url',
+						name: 'main_image_url',
+						value: $componentContent['main_image_url'] ?? '',
+						label: 'Hlavní obrázek (dlaždice v mřížce)'}
+					<div class="mb-3">
+						<label for="cmp-{$componentId}-main_image_alt" class="form-label">Alt text hlavního obrázku</label>
+						<input type="text" id="cmp-{$componentId}-main_image_alt" name="main_image_alt" class="form-control"
+						       value="{$componentContent['main_image_alt'] ?? ''}" placeholder="Popis obrázku pro čtečky…">
+					</div>
+					<div class="mb-3">
+						<label for="cmp-{$componentId}-heading" class="form-label">Nadpis (nepovinný)</label>
+						<input type="text" id="cmp-{$componentId}-heading" name="heading" class="form-control"
+						       value="{$componentContent['heading'] ?? ''}" placeholder="Nadpis zobrazený po rozkliknutí…">
+					</div>
+					<div class="mb-3">
+						<label for="cmp-{$componentId}-text" class="form-label">Text (nepovinný)</label>
+						<textarea id="cmp-{$componentId}-text" name="text" class="form-control" rows="4"
+						          placeholder="Text zobrazený po rozkliknutí…">{$componentContent['text'] ?? ''}</textarea>
+					</div>
+				</div>
+				<div class="col-md-6">
+					<div class="form-label d-block">Další fotky (galerie po rozkliknutí)</div>
+					<div class="mb-2" data-gallery-bulk data-upload-endpoint="{link uploadImage!}">
+						<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
+							<span>Přetáhněte sem více obrázků nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span>.</span>
+							<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-label="Vybrat obrázky" data-input>
+						</div>
+						<div class="small text-danger mt-1" data-error hidden></div>
+					</div>
+					<div class="small text-muted mb-2" n:if="!empty($componentContent['gallery'])">
+						<i class="bi bi-grip-vertical"></i> Pořadí fotek změníte přetažením za úchyt. Ukládá se s dlaždicí.
+					</div>
+					<div n:inner-foreach="$componentContent['gallery'] ?? [] as $i => $item" data-gallery-items>
+						{include galleryImageRow, index: (string) $i, item: $item, componentId: $componentId}
+					</div>
+					<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-add>
+						<i class="bi bi-plus-lg me-1"></i>Přidat fotku
+					</button>
+					<template data-gallery-template>
+						{include galleryImageRow, index: '__INDEX__', item: [], componentId: $componentId}
+					</template>
+				</div>
 			</div>
 
 		{elseif $component->getType() === 'cta'}
@@ -230,9 +353,12 @@
 
 		{/if}
 
-		{* Footer: spacing above/below the block + visibility + save — applies to every type, not just its own fields *}
+		{* Footer: spacing above/below the block + visibility + save — applies to every type, not just its own fields.
+		   A masonry tile sits in its parent's grid, so spacing means nothing there and the selects are left out
+		   (handleSaveComponent then stores the 'sm' fallback, which the tile never uses). *}
+		{var $hasSpacing = $component->getType() !== 'masonry_item'}
 		<div class="row g-3 align-items-center pt-3 border-top mt-1">
-			<div class="col-sm-4">
+			<div n:if="$hasSpacing" class="col-sm-4">
 				<label for="cmp-{$componentId}-spacingTop" class="form-label mb-0 small">Mezera nad blokem</label>
 				<select id="cmp-{$componentId}-spacingTop" name="spacingTop" class="form-select form-select-sm">
 					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
@@ -240,7 +366,7 @@
 					{/foreach}
 				</select>
 			</div>
-			<div class="col-sm-4">
+			<div n:if="$hasSpacing" class="col-sm-4">
 				<label for="cmp-{$componentId}-spacingBottom" class="form-label mb-0 small">Mezera pod blokem</label>
 				<select id="cmp-{$componentId}-spacingBottom" name="spacingBottom" class="form-select form-select-sm">
 					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
@@ -248,7 +374,7 @@
 					{/foreach}
 				</select>
 			</div>
-			<div class="col-sm-4 d-flex align-items-center justify-content-end gap-3">
+			<div n:class="$hasSpacing ? 'col-sm-4' : 'col-12', d-flex, align-items-center, justify-content-end, gap-3">
 				<div class="form-check mb-0">
 					<input type="checkbox" id="cmp-{$componentId}-isVisible" name="isVisible"
 					       class="form-check-input" {if $component->isVisible()}checked{/if}>

@@ -1,61 +1,70 @@
-{**
- * Shared renderer of CMS page components.
- * Used by Page/default.latte and Home/default.latte (selected homepage).
- * Expects: App\Entity\Page $page
- *}
 {varType App\Entity\Page $page}
 
-{*
- * Renders one component (and, for containers, its children — recursively).
- * Callers are responsible for the visibility check.
- *}
 {define renderComponent, App\Entity\PageComponent $component}
-	{var $c = $component->getContent()}
-	{* Admin-set override of the type's built-in top/bottom margin (see PageComponent::SPACING_VALUES); inline style
-	   wins over the classes below regardless of their specificity, so this always takes precedence when set. *}
+	{var $componentContent = $component->getContent()}
 	{var $spacingTopLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingTop() ?? ''] ?? null}
 	{var $spacingBottomLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingBottom() ?? ''] ?? null}
 	{var $spacingStyle = trim(
 		($spacingTopLength !== null ? 'margin-top: ' . $spacingTopLength . '; ' : '')
 		. ($spacingBottomLength !== null ? 'margin-bottom: ' . $spacingBottomLength : '')
-	)}
-	{var $spacingStyle = $spacingStyle !== '' ? $spacingStyle : null}
-	{* A `columns` child sits next to siblings in one row — the top margin some types carry for
-	   standalone page flow would sink them below siblings with no top margin, breaking row alignment. *}
+	) ?: null}
 	{var $isColumn = $component->getParent() !== null}
 
 	{switch $component->getType()}
 	{case 'hero'}
-		{* With a background image the hero becomes a "cover": photo + dark overlay + light text (see front/_layout.scss) *}
-		{var $heroImage = trim($c['image_url'] ?? '')}
+		{var $heroImage = trim($componentContent['image_url'] ?? '')}
 		<section n:class="page-hero, mb-5, $heroImage !== '' ? 'page-hero-cover'" n:attr="style: $spacingStyle">
 			<img n:if="$heroImage !== ''" class="page-hero-bg" src="{$heroImage}" alt="">
 			<div class="page-hero-content">
-				<h1 class="display-5 mb-3">{$c['heading'] ?? ''}</h1>
-				<p n:if="$c['subheading'] ?? null" n:class="lead, mb-4, $heroImage !== '' ? 'text-white-50' : 'text-muted'">{$c['subheading']}</p>
-				<a n:if="($c['button_text'] ?? '') && ($c['button_url'] ?? '')"
-				   href="{$c['button_url']}" class="btn btn-primary btn-lg">{$c['button_text']}</a>
+				<h1 class="display-5 mb-3">{$componentContent['heading'] ?? ''}</h1>
+				<p n:if="$componentContent['subheading'] ?? null" n:class="lead, mb-4, $heroImage !== '' ? 'text-white-50' : 'text-muted'">{$componentContent['subheading']}</p>
+				<a n:if="($componentContent['button_text'] ?? '') && ($componentContent['button_url'] ?? '')"
+				   href="{$componentContent['button_url']}" class="btn btn-primary btn-lg">{$componentContent['button_text']}</a>
 			</div>
 		</section>
 
 	{case 'heading'}
-		{* The webalized text doubles as an anchor id, so nav links like `#latest-news` can target the section *}
-		<h2 n:tag="$c['level'] ?? 'h2'" n:attr="id: trim($c['text'] ?? '') !== '' ? ($c['text']|webalize) : null, style: $spacingStyle"
-		    n:class="!$isColumn ? 'mt-5', mb-3, 'text-' . ($c['align'] ?? 'start')">{$c['text'] ?? ''}</h2>
+		{var $headingText = trim($componentContent['text'] ?? '')}
+		{var $headingId = $headingText !== '' ? ($componentContent['text']|webalize) : null}
+		<h2 n:tag="$componentContent['level'] ?? 'h2'" n:attr="id: $headingId, style: $spacingStyle"
+		    n:class="!$isColumn ? 'mt-5', mb-3, 'text-' . ($componentContent['align'] ?? 'start')">{$componentContent['text'] ?? ''}</h2>
 
 	{case 'text_block'}
-		<div class="mb-4 rich-text" n:attr="style: $spacingStyle">{($c['content'] ?? '')|noescape}</div>
+		<div class="mb-4 rich-text" n:attr="style: $spacingStyle">{($componentContent['content'] ?? '')|noescape}</div>
 
 	{case 'image'}
-		{var $imageUrl = trim($c['url'] ?? '')}
+		{var $imageUrl = trim($componentContent['url'] ?? '')}
 		<figure n:if="$imageUrl !== ''" class="page-image mb-4" n:attr="style: $spacingStyle">
-			<img src="{$imageUrl}" alt="{$c['alt'] ?? ''}" class="img-fluid rounded" loading="lazy">
-			<figcaption n:if="trim($c['caption'] ?? '') !== ''" class="small text-muted mt-2">{$c['caption']}</figcaption>
+			<img src="{$imageUrl}" alt="{$componentContent['alt'] ?? ''}" class="img-fluid rounded" loading="lazy">
+			<figcaption n:if="trim($componentContent['caption'] ?? '') !== ''" class="small text-muted mt-2">{$componentContent['caption']}</figcaption>
 		</figure>
 
+	{case 'masonry'}
+		{var $tiles = array_filter($component->getActiveChildren(), fn (App\Entity\PageComponent $t) => $t->isVisible() && trim($t->getContent()['main_image_url'] ?? '') !== '')}
+		<div n:if="count($tiles)" class="page-masonry mb-4" n:attr="style: $spacingStyle">
+			{foreach $tiles as $tile}
+				{include renderComponent, component: $tile}
+			{/foreach}
+		</div>
+
+		{var $tileList = array_values($tiles)}
+		{foreach $tileList as $i => $tile}
+			{include masonryItemModal, component: $tile, prev: $tileList[($i - 1 + count($tileList)) % count($tileList)], next: $tileList[($i + 1) % count($tileList)]}
+		{/foreach}
+
+	{case 'masonry_item'}
+		{var $mainImage = trim($componentContent['main_image_url'] ?? '')}
+		{var $heading = trim($componentContent['heading'] ?? '')}
+		{var $text = trim($componentContent['text'] ?? '')}
+		{var $gallery = array_filter(is_array($componentContent['gallery'] ?? null) ? $componentContent['gallery'] : [], fn ($g) => is_array($g) && trim($g['image_url'] ?? '') !== '')}
+		{var $modalId = 'masonry-item-' . $component->getId()}
+		<button n:if="$mainImage !== ''" type="button" class="page-masonry-item ratio ratio-1x1"
+		        data-bs-toggle="modal" data-bs-target="#{$modalId}"
+		        aria-label="{$heading !== '' ? $heading : 'Zobrazit detail'}">
+			<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+		</button>
+
 	{case 'columns'}
-		{* Container: each visible child component is one equal-width column (.col-md splits
-		   the row evenly); hidden children take no space. Stacks vertically below md. *}
 		<div class="row g-4 mb-4" n:attr="style: $spacingStyle">
 			{foreach $component->getActiveChildren() as $child}
 				{continueIf !$child->isVisible()}
@@ -67,27 +76,28 @@
 
 	{case 'cta'}
 		<section n:class="page-cta, !$isColumn ? 'my-5' : 'mb-3'" n:attr="style: $spacingStyle">
-			<h2 class="h3 mb-2">{$c['heading'] ?? ''}</h2>
-			<div n:if="$c['body'] ?? null" class="text-muted mb-3 rich-text">{($c['body'])|noescape}</div>
-			<a n:if="($c['button_text'] ?? '') && ($c['button_url'] ?? '')"
-			   href="{$c['button_url']}" class="btn btn-{$c['button_style'] ?? 'primary'}">{$c['button_text']}</a>
+			<h2 class="h3 mb-2">{$componentContent['heading'] ?? ''}</h2>
+			<div n:if="$componentContent['body'] ?? null" class="text-muted mb-3 rich-text">{($componentContent['body'])|noescape}</div>
+			<a n:if="($componentContent['button_text'] ?? '') && ($componentContent['button_url'] ?? '')"
+			   href="{$componentContent['button_url']}" class="btn btn-{$componentContent['button_style'] ?? 'primary'}">{$componentContent['button_text']}</a>
 		</section>
 
 	{case 'contact_form'}
-		{* Posts to an external form service (e.g. Formspree) — without an action URL nothing renders *}
-		<section n:if="trim($c['action_url'] ?? '') !== ''" class="page-contact-form my-5" n:attr="style: $spacingStyle">
-			<h2 n:if="trim($c['heading'] ?? '') !== ''" class="h3 mb-4 text-center">{$c['heading']}</h2>
-			<form method="post" action="{$c['action_url']}">
+		<section n:if="trim($componentContent['action_url'] ?? '') !== ''" class="page-contact-form my-5" n:attr="style: $spacingStyle">
+			<h2 n:if="trim($componentContent['heading'] ?? '') !== ''" class="h3 mb-4 text-center">{$componentContent['heading']}</h2>
+			<form method="post" action="{$componentContent['action_url']}">
 				<div class="mb-3">
-					<input type="email" name="email" class="form-control" required
-					       placeholder="{$c['email_placeholder'] ?? ''}">
+					<label for="contact-{$component->getId()}-email" class="visually-hidden">E-mail</label>
+					<input type="email" id="contact-{$component->getId()}-email" name="email" class="form-control" required
+					       placeholder="{$componentContent['email_placeholder'] ?? ''}">
 				</div>
 				<div class="mb-3">
-					<textarea name="message" rows="5" class="form-control" required
-					          placeholder="{$c['message_placeholder'] ?? ''}"></textarea>
+					<label for="contact-{$component->getId()}-message" class="visually-hidden">Zpráva</label>
+					<textarea id="contact-{$component->getId()}-message" name="message" rows="5" class="form-control" required
+					          placeholder="{$componentContent['message_placeholder'] ?? ''}"></textarea>
 				</div>
 				<div class="text-center">
-					<button type="submit" class="btn btn-primary">{$c['button_text'] ?? 'Odeslat'}</button>
+					<button type="submit" class="btn btn-primary">{$componentContent['button_text'] ?? 'Odeslat'}</button>
 				</div>
 			</form>
 		</section>
@@ -97,21 +107,46 @@
 	{/switch}
 {/define}
 
+{define masonryItemModal, App\Entity\PageComponent $component, App\Entity\PageComponent $prev, App\Entity\PageComponent $next}
+	{var $componentContent = $component->getContent()}
+	{var $mainImage = trim($componentContent['main_image_url'] ?? '')}
+	{var $heading = trim($componentContent['heading'] ?? '')}
+	{var $text = trim($componentContent['text'] ?? '')}
+	{var $gallery = array_filter(is_array($componentContent['gallery'] ?? null) ? $componentContent['gallery'] : [], fn ($g) => is_array($g) && trim($g['image_url'] ?? '') !== '')}
+	{* full-page "book" view: no backdrop, prev/next arrows switch to the sibling tiles' modals (assets/front/masonry.js) *}
+	<div n:if="$mainImage !== ''" class="modal fade masonry-book-modal" id="masonry-item-{$component->getId()}" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+		<div class="modal-dialog modal-fullscreen">
+			<div class="modal-content">
+				<button type="button" class="btn-close book-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+				<button n:if="$prev !== $component" type="button" class="book-nav book-nav-prev" data-masonry-nav="#masonry-item-{$prev->getId()}" aria-label="Předchozí">
+					<i class="bi bi-chevron-left"></i>
+				</button>
+				<button n:if="$next !== $component" type="button" class="book-nav book-nav-next" data-masonry-nav="#masonry-item-{$next->getId()}" aria-label="Další">
+					<i class="bi bi-chevron-right"></i>
+				</button>
+				<div n:class="modal-body, row, g-3, count($gallery) ? 'book-with-gallery' : 'align-items-center'">
+					<div n:class="book-main, count($gallery) ? 'col-md-7' : 'col-12'">
+						<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+						<div n:if="$heading !== '' || $text !== ''" class="book-caption mt-3">
+							<h3 n:if="$heading !== ''" class="h4">{$heading}</h3>
+							<p n:if="$text !== ''">{$text|breakLines}</p>
+						</div>
+					</div>
+					<div n:if="count($gallery)" class="col-md-5 book-gallery">
+						{foreach $gallery as $g}
+							{* --i drives the staggered fade-in delay in _layout.scss *}
+							<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy" style="--i: {$iterator->counter0}">
+						{/foreach}
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{/define}
+
 {var $rootComponents = $page->getRootComponents()}
 
-{* Show a plain title header only when the page does not open with its own hero *}
-{var $hasHero = false}
-{foreach $rootComponents as $component}
-	{if $component->isVisible() && $component->getType() === 'hero'}
-		{var $hasHero = true}
-	{/if}
-{/foreach}
-
 <article class="mx-auto" style="max-width: 900px;">
-
-	<header n:if="!$hasHero" class="mb-4">
-		<h1>{$page->getTitle()}</h1>
-	</header>
 
 	{foreach $rootComponents as $component}
 		{continueIf !$component->isVisible()}
