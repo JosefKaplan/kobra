@@ -1,207 +1,189 @@
-// Public site shell — navbar + content + footer
-
 html {
-	// Nav links may target in-page anchors (webalized heading ids) — glide instead of jumping
-	scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
 body {
-	min-height: 100vh;
-	display: flex;
-	flex-direction: column;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 main {
-	flex: 1;
+  flex: 1;
 }
 
 .navbar-brand {
-	font-weight: 700;
-	letter-spacing: -.01em;
+  font-weight: 700;
+  letter-spacing: -.01em;
 }
 
-// Centered card used by the auth pages (login / register)
 .auth-wrap {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 3rem 0;
-	min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+  min-height: 60vh;
 }
 
-// CMS component: hero
 .page-hero {
-	background: linear-gradient(135deg, rgba($primary, .1), rgba($primary, .02));
-	border: 1px solid rgba($primary, .12);
-	border-radius: $border-radius-lg;
-	padding: 4rem 2rem;
-	text-align: center;
+  background: linear-gradient(135deg, $hero-bg-from, $hero-bg-to);
+  border: 1px solid $hero-border;
+  border-radius: $border-radius-lg;
+  padding: 4rem 2rem;
+  text-align: center;
 
-	h1 {
-		font-weight: 700;
-	}
+  h1 {
+    font-weight: 700;
+  }
 }
 
-// Hero with a background image ("cover"): the photo fills the section, a dark
-// gradient keeps the text readable. Explicit z-indexes — all three layers are
-// positioned, so painting order must not depend on DOM order.
 .page-hero-cover {
-	position: relative;
-	overflow: hidden;
-	border: none;
-	padding: 6rem 2rem;
-	color: $white;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  padding: 6rem 2rem;
+  color: $hero-cover-text;
 
-	.page-hero-bg {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		z-index: 0;
-	}
+  .page-hero-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
 
-	&::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(to bottom, rgba($black, .35), rgba($black, .7));
-		z-index: 1;
-	}
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, $hero-cover-overlay-from, $hero-cover-overlay-to);
+    z-index: 1;
+  }
 
-	.page-hero-content {
-		position: relative;
-		z-index: 2;
-	}
+  .page-hero-content {
+    position: relative;
+    z-index: 2;
+  }
 }
 
-// CMS component: image — centered figure; inside a columns row it fills the column
-// so image + text rows line up like cards
 .page-image {
-	text-align: center;
+  text-align: center;
 
-	.col-md & img {
-		width: 100%;
-	}
+  .col-md & img {
+    width: 100%;
+  }
 }
 
-// CMS component: masonry — a grid of square image tiles ("books"); clicking one opens a modal
-// with its full detail (see the `masonry` case in components.latte and .masonry-book-modal below).
-// .ratio.ratio-1x1 (Bootstrap) makes each tile a square regardless of the source image's
-// aspect ratio; object-fit: cover crops rather than stretches/letterboxes it.
+$masonry-gap: .4rem;
+$masonry-radius: 0;
+$masonry-max-width: 1290px;
+
 .page-masonry {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-	gap: 1rem;
+  // breaks out of the 900px article to the full .container width
+  width: min(#{$masonry-max-width}, 100vw - 3rem);
+  margin-left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(180px, calc((100% - 4 * #{$masonry-gap}) / 5)), 1fr));
+  gap: $masonry-gap;
 
-	img {
-		object-fit: cover;
-		border-radius: $border-radius;
-	}
+  img {
+    object-fit: cover;
+    border-radius: $masonry-radius;
+  }
 }
 
-// Each tile is a <button> (always clickable — it opens its book's modal), reset back to plain
-// block-level tap target so Bootstrap's .ratio sizing (which targets the tile itself) still applies.
 .page-masonry-item {
-	display: block;
-	width: 100%;
-	overflow: hidden;
-	border-radius: $border-radius;
-	background: none;
-	border: 0;
-	padding: 0;
-	transition: transform .15s ease;
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: $masonry-radius;
+  background: none;
+  border: 0;
+  padding: 0;
+  transition: transform .15s ease;
 
-	&:hover {
-		transform: scale(1.03);
-	}
+  &:hover {
+    transform: scale(1.03);
+  }
 }
 
-// One book's detail, opened from its .page-masonry-item tile. Main photo + optional
-// heading/text on the left, gallery photos (if any) on the right.
 .masonry-book-modal {
-	.book-main img {
-		width: 100%;
-		border-radius: $border-radius;
-	}
+  .book-main img {
+    width: 100%;
+    border-radius: $border-radius;
+  }
 
-	.book-gallery {
-		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-		gap: .5rem;
-		align-content: start;
+  .book-gallery {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: .5rem;
+    align-content: start;
 
-		img {
-			width: 100%;
-			aspect-ratio: 1 / 1;
-			object-fit: cover;
-			border-radius: $border-radius-sm;
-		}
-	}
+    img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: cover;
+      border-radius: $border-radius-sm;
+    }
+  }
 }
 
-// CMS component: contact form — a narrow centered column reads better than full width
 .page-contact-form form {
-	max-width: 480px;
-	margin-inline: auto;
+  max-width: 480px;
+  margin-inline: auto;
 }
 
-// Homepage page-list cards
 .card-hover {
-	transition: transform .15s ease, box-shadow .15s ease;
+  transition: transform .15s ease, box-shadow .15s ease;
 
-	&:hover {
-		transform: translateY(-2px);
-		box-shadow: $box-shadow !important;
-	}
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $box-shadow !important;
+  }
 }
 
-// CMS component: call to action
 .page-cta {
-	background-color: $white;
-	border: 1px solid $border-color;
-	border-radius: $border-radius-lg;
-	padding: 2.5rem 2rem;
-	text-align: center;
-	box-shadow: $box-shadow-sm;
+  background-color: $cta-bg;
+  border: 1px solid $cta-border;
+  border-radius: $border-radius-lg;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  box-shadow: $box-shadow-sm;
 }
 
-// CMS rich-text fields (text_block / cta.body / footer.text), edited via Quill in the admin
-// and rendered as sanitized HTML (see App\Helpers\RichTextSanitizer).
 .rich-text {
-	> :last-child {
-		margin-bottom: 0 !important;
-	}
+  > :last-child {
+    margin-bottom: 0 !important;
+  }
 
-	ul, ol {
-		padding-left: 1.5rem;
-	}
+  ul, ol {
+    padding-left: 1.5rem;
+  }
 
-	// Quill always emits <ol>, distinguishing bullet vs. numbered items via a data-list
-	// attribute (see node_modules/quill/formats/list.js) rather than <ul> vs <ol> — replicate
-	// its rendering here since the public site doesn't ship Quill's own CSS.
-	ol {
-		list-style: none;
-		counter-reset: rich-text-ol;
+  ol {
+    list-style: none;
+    counter-reset: rich-text-ol;
 
-		> li[data-list="ordered"] {
-			counter-increment: rich-text-ol;
+    > li[data-list="ordered"] {
+      counter-increment: rich-text-ol;
 
-			&::before {
-				content: counter(rich-text-ol) ". ";
-			}
-		}
+      &::before {
+        content: counter(rich-text-ol) ". ";
+      }
+    }
 
-		> li[data-list="bullet"],
-		> li:not([data-list]) {
-			list-style-type: disc;
-			display: list-item;
-		}
-	}
+    > li[data-list="bullet"],
+    > li:not([data-list]) {
+      list-style-type: disc;
+      display: list-item;
+    }
+  }
 
-	blockquote {
-		border-left: 3px solid $border-color;
-		padding-left: 1rem;
-		color: $text-muted;
-	}
+  blockquote {
+    border-left: 3px solid $blockquote-border;
+    padding-left: 1rem;
+    color: $text-muted;
+  }
 }

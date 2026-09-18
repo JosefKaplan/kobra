@@ -1,0 +1,87 @@
+// Base values are !default so admin.scss can override them via _colors-admin.scss.
+
+// Neutrals
+$white: #fff !default;
+$black: #000 !default;
+$body-bg: #f5f5f6 !default;
+$body-color: #1f2937 !default;
+$border-color: #dee2e6 !default;
+$shadow-color: #101828 !default;
+
+$gray-100: #f8f9fa !default;
+$gray-200: #e9ecef !default;
+$gray-300: #dee2e6 !default;
+$gray-400: #ced4da !default;
+$gray-500: #adb5bd !default;
+$gray-600: #6c757d !default;
+$gray-700: #495057 !default;
+$gray-800: #343a40 !default;
+$gray-900: #212529 !default;
+
+// Theme colors
+$primary: #4f46e5 !default;
+$secondary: #6c757d !default;
+$success: #198754 !default;
+$info: #0dcaf0 !default;
+$warning: #ffc107 !default;
+$danger: #dc3545 !default;
+$light: #f8f9fa !default;
+$dark: #212529 !default;
+
+// Raw hues
+$blue: #0d6efd !default;
+$indigo: #6610f2 !default;
+$red: #dc3545 !default;
+$yellow: #ffc107 !default;
+$green: #198754 !default;
+$cyan: #0dcaf0 !default;
+$purple: #6f42c1 !default;
+$orange: #fd7e14 !default;
+$teal: #20c997 !default;
+$pink: #d63384 !default;
+
+// Front
+$hero-accent: #4f46e5;
+$hero-bg-from: rgba($hero-accent, .1);
+$hero-bg-to: rgba($hero-accent, .02);
+$hero-border: rgba($hero-accent, .12);
+$hero-cover-text: $white;
+$hero-cover-overlay-from: rgba($black, .35);
+$hero-cover-overlay-to: rgba($black, .7);
+$cta-bg: $white;
+$cta-border: $border-color;
+$blockquote-border: $border-color;
+
+// Admin sidebar / topbar
+$sidebar-bg: #1f2618;
+$sidebar-text: #a4ae92;
+$sidebar-section-text: #6f7a5e;
+$sidebar-text-hover: #fff;
+$sidebar-hover-bg: #2b3421;
+$sidebar-active-bg: #364428;
+$sidebar-active-text: #fff;
+$sidebar-active-accent: #b5c76a;
+$topbar-bg: #171d11;
+
+// Component types
+$type-image: #a15936;
+$type-hero: #828a2e;
+$type-cta: #419130;
+$type-contact-form: #309169;
+$type-heading: #367da1;
+$type-text-block: #3e36a1;
+$type-columns: #8f36a1;
+$type-masonry: #a13662;
+
+// Image upload
+$dropzone-hover-bg: #f0f2e3;
+$dropzone-active-bg: #e4ebc6;
+$dropzone-active-border: #86a03a;
+$upload-spinner: #86a03a;
+$upload-spinner-track: #d5deb0;
+
+// Vendor widgets (rich-text editor, datepicker, select)
+$widget-accent: $primary;
+$widget-focus-border: mix($white, $primary, 50%);
+$widget-focus-ring: rgba($primary, .25);
+$widget-hover-bg: #eef0e0;

@@ -104,11 +104,13 @@
 			<h2 n:if="trim($componentContent['heading'] ?? '') !== ''" class="h3 mb-4 text-center">{$componentContent['heading']}</h2>
 			<form method="post" action="{$componentContent['action_url']}">
 				<div class="mb-3">
-					<input type="email" name="email" class="form-control" required
+					<label for="contact-{$component->getId()}-email" class="visually-hidden">E-mail</label>
+					<input type="email" id="contact-{$component->getId()}-email" name="email" class="form-control" required
 					       placeholder="{$componentContent['email_placeholder'] ?? ''}">
 				</div>
 				<div class="mb-3">
-					<textarea name="message" rows="5" class="form-control" required
+					<label for="contact-{$component->getId()}-message" class="visually-hidden">Zpráva</label>
+					<textarea id="contact-{$component->getId()}-message" name="message" rows="5" class="form-control" required
 					          placeholder="{$componentContent['message_placeholder'] ?? ''}"></textarea>
 				</div>
 				<div class="text-center">
@@ -124,18 +126,7 @@
 
 {var $rootComponents = $page->getRootComponents()}
 
-{var $hasHero = false}
-{foreach $rootComponents as $component}
-	{if $component->isVisible() && $component->getType() === 'hero'}
-		{var $hasHero = true}
-	{/if}
-{/foreach}
-
 <article class="mx-auto" style="max-width: 900px;">
-
-	<header n:if="!$hasHero" class="mb-4">
-		<h1>{$page->getTitle()}</h1>
-	</header>
 
 	{foreach $rootComponents as $component}
 		{continueIf !$component->isVisible()}

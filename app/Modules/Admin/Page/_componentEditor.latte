@@ -18,7 +18,7 @@
 		<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-image-upload-dropzone>
 			<img n:if="trim($value) !== ''" src="{$value}" class="image-upload-preview" data-image-upload-preview alt="">
 			<span data-image-upload-hint>Přetáhněte obrázek sem nebo <span class="text-primary text-decoration-underline" data-image-upload-browse>vyberte soubor</span></span>
-			<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" data-image-upload-input>
+			<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" aria-label="Vybrat obrázek" data-image-upload-input>
 		</div>
 		<div class="small text-danger mt-1" data-image-upload-error hidden></div>
 		<div n:if="$hint !== null" class="form-text">{$hint}</div>
@@ -41,8 +41,8 @@
 				label: 'Fotka'}
 		</div>
 		<div class="col-3">
-			<label class="form-label small">Alt text</label>
-			<input type="text" name="gallery[{$index}][alt]" class="form-control form-control-sm"
+			<label for="cmp-{$componentId}-gallery-{$index}-alt" class="form-label small">Alt text</label>
+			<input type="text" id="cmp-{$componentId}-gallery-{$index}-alt" name="gallery[{$index}][alt]" class="form-control form-control-sm"
 			       value="{$item['alt'] ?? ''}" placeholder="Popis obrázku…">
 		</div>
 		<div class="col-1 pt-4 d-flex gap-1">
@@ -66,35 +66,35 @@
 	{var int $componentId = $component->getId()}
 	<div class="d-flex align-items-center gap-2">
 		{if $component->getType() === 'hero'}
-			<i class="bi bi-image text-primary"></i>
+			<i class="bi bi-image text-type-hero"></i>
 			<span class="fw-semibold">Hero sekce</span>
 		{elseif $component->getType() === 'heading'}
-			<i class="bi bi-type-h2 text-info"></i>
+			<i class="bi bi-type-h2 text-type-heading"></i>
 			<span class="fw-semibold">Nadpis</span>
 		{elseif $component->getType() === 'text_block'}
-			<i class="bi bi-text-paragraph text-secondary"></i>
+			<i class="bi bi-text-paragraph text-type-text_block"></i>
 			<span class="fw-semibold">Textový blok</span>
 		{elseif $component->getType() === 'image'}
-			<i class="bi bi-card-image text-orange"></i>
+			<i class="bi bi-card-image text-type-image"></i>
 			<span class="fw-semibold">Obrázek</span>
 		{elseif $component->getType() === 'columns'}
-			<i class="bi bi-layout-three-columns text-purple"></i>
+			<i class="bi bi-layout-three-columns text-type-columns"></i>
 			<span class="fw-semibold">Sloupce</span>
 		{elseif $component->getType() === 'masonry'}
-			<i class="bi bi-grid-3x3-gap-fill text-pink"></i>
+			<i class="bi bi-grid-3x3-gap-fill text-type-masonry"></i>
 			<span class="fw-semibold">Masonry</span>
 		{elseif $component->getType() === 'masonry_item'}
 			{var $tileImage = trim($component->getContent()['main_image_url'] ?? '')}
 			<img n:if="$tileImage !== ''" src="{$tileImage}" alt="" class="image-upload-preview">
-			<i n:if="$tileImage === ''" class="bi bi-image text-pink"></i>
+			<i n:if="$tileImage === ''" class="bi bi-image text-type-masonry"></i>
 			<span class="fw-semibold">Dlaždice</span>
 			{var $tileHeading = trim($component->getContent()['heading'] ?? '')}
 			<span n:if="$tileHeading !== ''" class="text-muted small text-truncate" style="max-width: 16rem">{$tileHeading}</span>
 		{elseif $component->getType() === 'cta'}
-			<i class="bi bi-megaphone text-success"></i>
+			<i class="bi bi-megaphone text-type-cta"></i>
 			<span class="fw-semibold">CTA blok</span>
 		{elseif $component->getType() === 'contact_form'}
-			<i class="bi bi-envelope-paper text-teal"></i>
+			<i class="bi bi-envelope-paper text-type-contact_form"></i>
 			<span class="fw-semibold">Kontaktní formulář</span>
 		{else}
 			<i class="bi bi-puzzle text-muted"></i>
@@ -266,11 +266,11 @@
 					</div>
 				</div>
 				<div class="col-md-6">
-					<label class="form-label d-block">Další fotky (galerie po rozkliknutí)</label>
+					<div class="form-label d-block">Další fotky (galerie po rozkliknutí)</div>
 					<div class="mb-2" data-gallery-bulk data-upload-endpoint="{link uploadImage!}">
 						<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
 							<span>Přetáhněte sem více obrázků nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span>.</span>
-							<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-input>
+							<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-label="Vybrat obrázky" data-input>
 						</div>
 						<div class="small text-danger mt-1" data-error hidden></div>
 					</div>
