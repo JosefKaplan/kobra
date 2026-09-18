@@ -33,26 +33,34 @@
  *}
 {define galleryImageRow, string $index, array $item, int $componentId}
 	<div class="row g-2 align-items-start mb-2 masonry-item" data-gallery-item>
-		<div class="col-8">
+		<div class="col-7">
 			{include imageUploadField,
 				id: 'cmp-' . $componentId . '-gallery-' . $index . '-image',
 				name: 'gallery[' . $index . '][image_url]',
 				value: $item['image_url'] ?? '',
 				label: 'Fotka'}
 		</div>
-		<div class="col-3">
+		<div class="col-5">
 			<label for="cmp-{$componentId}-gallery-{$index}-alt" class="form-label small">Alt text</label>
-			<input type="text" id="cmp-{$componentId}-gallery-{$index}-alt" name="gallery[{$index}][alt]" class="form-control form-control-sm"
+			<input type="text" id="cmp-{$componentId}-gallery-{$index}-alt" name="gallery[{$index}][alt]" class="form-control form-control-sm mb-2"
 			       value="{$item['alt'] ?? ''}" placeholder="Popis obrázku…">
-		</div>
-		<div class="col-1 pt-4 d-flex gap-1">
-			<button type="button" class="btn btn-outline-secondary btn-sm masonry-drag-handle" data-gallery-item-drag-handle
-			        title="Přetáhněte pro změnu pořadí" aria-label="Přetáhněte pro změnu pořadí">
-				<i class="bi bi-grip-vertical"></i>
-			</button>
-			<button type="button" class="btn btn-outline-danger btn-sm" data-gallery-item-remove title="Odebrat fotku">
-				<i class="bi bi-trash"></i>
-			</button>
+			{* controls sit under the alt input so the row never overflows the card at narrow widths *}
+			<div class="d-flex flex-wrap gap-1">
+				<button type="button" class="btn btn-outline-secondary btn-sm masonry-drag-handle" data-gallery-item-drag-handle
+				        title="Přetáhněte pro změnu pořadí" aria-label="Přetáhněte pro změnu pořadí">
+					<i class="bi bi-grip-vertical"></i>
+				</button>
+				{* up/down arrows: same client-side reorder as the drag, for those who don't drag (masonry.js) *}
+				<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-item-move="up" title="Posunout výš" aria-label="Posunout výš">
+					<i class="bi bi-arrow-up"></i>
+				</button>
+				<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-item-move="down" title="Posunout níž" aria-label="Posunout níž">
+					<i class="bi bi-arrow-down"></i>
+				</button>
+				<button type="button" class="btn btn-outline-danger btn-sm ms-auto" data-gallery-item-remove title="Odebrat fotku">
+					<i class="bi bi-trash"></i>
+				</button>
+			</div>
 		</div>
 	</div>
 {/define}
@@ -275,7 +283,7 @@
 						<div class="small text-danger mt-1" data-error hidden></div>
 					</div>
 					<div class="small text-muted mb-2" n:if="!empty($componentContent['gallery'])">
-						<i class="bi bi-grip-vertical"></i> Pořadí fotek změníte přetažením za úchyt. Ukládá se s dlaždicí.
+						<i class="bi bi-grip-vertical"></i> Pořadí fotek změníte přetažením za úchyt nebo šipkami. Ukládá se s dlaždicí.
 					</div>
 					<div n:inner-foreach="$componentContent['gallery'] ?? [] as $i => $item" data-gallery-items>
 						{include galleryImageRow, index: (string) $i, item: $item, componentId: $componentId}

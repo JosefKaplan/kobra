@@ -185,6 +185,21 @@ $type-colors: (
   opacity: .5;
 }
 
+.masonry-sorting {
+  cursor: grabbing;
+  user-select: none;
+}
+
+// brief highlight after an arrow move so the eye follows the row
+.masonry-item-moved {
+  animation: masonry-item-moved .6s ease-out;
+}
+
+@keyframes masonry-item-moved {
+  from { background-color: $masonry-moved-bg; }
+  to { background-color: transparent; }
+}
+
 .component-card .ql-container {
   height: auto;
 }

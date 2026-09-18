@@ -63,49 +63,50 @@ function wireBulkDropzone(bulkEl, onUploaded, onDone) {
     });
 }
 
+/**
+ * Grip-handle reordering of a tile's gallery rows. Deliberately NOT native HTML5 drag & drop:
+ * a drag started on a <button> inside a `draggable` row is unreliable across browsers, so this
+ * uses plain pointer events — the row under the cursor (elementFromPoint) decides where the
+ * dragged row goes. No pointer capture either: moving the row with insertBefore() re-inserts it
+ * into the DOM and a re-inserted element loses its capture, which silently ends the drag after
+ * the first move; instead pointermove/pointerup are tracked on `document` for the drag's lifetime.
+ * The result is purely the new DOM order, saved with the tile.
+ */
 function wireSorting(container) {
     if (!container || container.dataset.sortingWired) return;
     container.dataset.sortingWired = '1';
 
-    let dragged = null;
-    const clearDraggable = () => {
-        container.querySelectorAll('[data-gallery-item][draggable]').forEach((r) => r.removeAttribute('draggable'));
-    };
-
     container.addEventListener('pointerdown', (e) => {
-        const row = e.target.closest('[data-gallery-item-drag-handle]')?.closest('[data-gallery-item]');
-        if (row) row.draggable = true;
-    });
-    container.addEventListener('pointerup', clearDraggable);
+        const handle = e.target.closest('[data-gallery-item-drag-handle]');
+        const row = handle?.closest('[data-gallery-item]');
+        if (!handle || !row || row.parentElement !== container || e.button !== 0) return;
 
-    container.addEventListener('dragstart', (e) => {
-        const row = e.target;
-        if (!(row instanceof Element) || !row.matches('[data-gallery-item]') || row.parentElement !== container) return;
-        if (!row.draggable) {
-            e.preventDefault();
-            return;
-        }
-        dragged = row;
+        e.preventDefault(); // no text selection / focus change while dragging
+        const pointerId = e.pointerId;
         row.classList.add('masonry-item-dragging');
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', '');
-    });
+        document.body.classList.add('masonry-sorting');
 
-    container.addEventListener('dragover', (e) => {
-        if (!dragged) return;
-        e.preventDefault();
-        e.dataTransfer.dropEffect = 'move';
-        const over = e.target.closest('[data-gallery-item]');
-        if (!over || over === dragged || over.parentElement !== container) return;
-        const rect = over.getBoundingClientRect();
-        const after = e.clientY > rect.top + rect.height / 2;
-        container.insertBefore(dragged, after ? over.nextElementSibling : over);
-    });
-
-    container.addEventListener('dragend', () => {
-        dragged?.classList.remove('masonry-item-dragging');
-        dragged = null;
-        clearDraggable();
+        const onMove = (ev) => {
+            if (ev.pointerId !== pointerId) return;
+            const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('[data-gallery-item]');
+            if (!over || over === row || over.parentElement !== container) return;
+            const rect = over.getBoundingClientRect();
+            const after = ev.clientY > rect.top + rect.height / 2;
+            container.insertBefore(row, after ? over.nextElementSibling : over);
+        };
+        const onEnd = (ev) => {
+            if (ev instanceof PointerEvent && ev.pointerId !== pointerId) return;
+            document.removeEventListener('pointermove', onMove);
+            document.removeEventListener('pointerup', onEnd);
+            document.removeEventListener('pointercancel', onEnd);
+            window.removeEventListener('blur', onEnd);
+            row.classList.remove('masonry-item-dragging');
+            document.body.classList.remove('masonry-sorting');
+        };
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onEnd);
+        document.addEventListener('pointercancel', onEnd);
+        window.addEventListener('blur', onEnd);
     });
 }
 
@@ -148,6 +149,17 @@ export function initMasonry(scope = document) {
     document.addEventListener('click', (e) => {
         if (e.target.closest('[data-gallery-item-remove]')) {
             e.target.closest('[data-gallery-item]')?.remove();
+            return;
+        }
+        const move = e.target.closest('[data-gallery-item-move]');
+        if (move) {
+            // purely client-side, like the drag: the new DOM order becomes the POST order on save
+            const row = move.closest('[data-gallery-item]');
+            const sibling = move.dataset.galleryItemMove === 'up' ? row?.previousElementSibling : row?.nextElementSibling;
+            if (!row || !sibling) return;
+            if (move.dataset.galleryItemMove === 'up') sibling.before(row); else sibling.after(row);
+            row.classList.add('masonry-item-moved');
+            row.addEventListener('animationend', () => row.classList.remove('masonry-item-moved'), {once: true});
         }
     });
 }
