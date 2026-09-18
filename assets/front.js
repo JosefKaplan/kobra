@@ -5,5 +5,7 @@ import 'bootstrap/js/dist/dropdown';
 import 'bootstrap/js/dist/alert';
 import 'bootstrap/js/dist/modal';
 import netteForms from 'nette-forms';
+import { initMasonryBooks } from './front/masonry';
 
 netteForms.initOnLoad();
+initMasonryBooks();

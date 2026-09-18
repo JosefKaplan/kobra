@@ -73,6 +73,10 @@ $type-text-block: #3e36a1;
 $type-columns: #8f36a1;
 $type-masonry: #a13662;
 
+// front: masonry "book" full-page view prev/next arrows
+$book-nav-bg: rgba(#000, .08);
+$book-nav-bg-hover: rgba(#000, .16);
+
 // Image upload
 $dropzone-hover-bg: #f0f2e3;
 $dropzone-active-bg: #e4ebc6;

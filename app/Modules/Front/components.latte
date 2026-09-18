@@ -47,8 +47,9 @@
 			{/foreach}
 		</div>
 
-		{foreach $tiles as $tile}
-			{include masonryItemModal, component: $tile}
+		{var $tileList = array_values($tiles)}
+		{foreach $tileList as $i => $tile}
+			{include masonryItemModal, component: $tile, prev: $tileList[($i - 1 + count($tileList)) % count($tileList)], next: $tileList[($i + 1) % count($tileList)]}
 		{/foreach}
 
 	{case 'masonry_item'}
@@ -106,27 +107,35 @@
 	{/switch}
 {/define}
 
-{define masonryItemModal, App\Entity\PageComponent $component}
+{define masonryItemModal, App\Entity\PageComponent $component, App\Entity\PageComponent $prev, App\Entity\PageComponent $next}
 	{var $componentContent = $component->getContent()}
 	{var $mainImage = trim($componentContent['main_image_url'] ?? '')}
 	{var $heading = trim($componentContent['heading'] ?? '')}
 	{var $text = trim($componentContent['text'] ?? '')}
 	{var $gallery = array_filter(is_array($componentContent['gallery'] ?? null) ? $componentContent['gallery'] : [], fn ($g) => is_array($g) && trim($g['image_url'] ?? '') !== '')}
-	<div n:if="$mainImage !== ''" class="modal fade masonry-book-modal" id="masonry-item-{$component->getId()}" tabindex="-1" aria-hidden="true">
-		<div class="modal-dialog modal-lg modal-dialog-centered">
+	{* full-page "book" view: no backdrop, prev/next arrows switch to the sibling tiles' modals (assets/front/masonry.js) *}
+	<div n:if="$mainImage !== ''" class="modal fade masonry-book-modal" id="masonry-item-{$component->getId()}" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
+		<div class="modal-dialog modal-fullscreen">
 			<div class="modal-content">
-				<button type="button" class="btn-close position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Zavřít"></button>
-				<div class="modal-body row g-4">
-					<div n:class="book-main, count($gallery) ? 'col-md-6' : 'col-12'">
+				<button type="button" class="btn-close book-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
+				<button n:if="$prev !== $component" type="button" class="book-nav book-nav-prev" data-masonry-nav="#masonry-item-{$prev->getId()}" aria-label="Předchozí">
+					<i class="bi bi-chevron-left"></i>
+				</button>
+				<button n:if="$next !== $component" type="button" class="book-nav book-nav-next" data-masonry-nav="#masonry-item-{$next->getId()}" aria-label="Další">
+					<i class="bi bi-chevron-right"></i>
+				</button>
+				<div n:class="modal-body, row, g-3, count($gallery) ? 'book-with-gallery' : 'align-items-center'">
+					<div n:class="book-main, count($gallery) ? 'col-md-7' : 'col-12'">
 						<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 						<div n:if="$heading !== '' || $text !== ''" class="book-caption mt-3">
 							<h3 n:if="$heading !== ''" class="h4">{$heading}</h3>
 							<p n:if="$text !== ''">{$text|breakLines}</p>
 						</div>
 					</div>
-					<div n:if="count($gallery)" class="col-md-6 book-gallery">
+					<div n:if="count($gallery)" class="col-md-5 book-gallery">
 						{foreach $gallery as $g}
-							<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy">
+							{* --i drives the staggered fade-in delay in _layout.scss *}
+							<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy" style="--i: {$iterator->counter0}">
 						{/foreach}
 					</div>
 				</div>
