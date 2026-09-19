@@ -55,8 +55,6 @@
 	{case 'masonry_item'}
 		{var $mainImage = trim($componentContent['main_image_url'] ?? '')}
 		{var $heading = trim($componentContent['heading'] ?? '')}
-		{var $text = trim($componentContent['text'] ?? '')}
-		{var $gallery = array_filter(is_array($componentContent['gallery'] ?? null) ? $componentContent['gallery'] : [], fn ($g) => is_array($g) && trim($g['image_url'] ?? '') !== '')}
 		{var $modalId = 'masonry-item-' . $component->getId()}
 		<button n:if="$mainImage !== ''" type="button" class="page-masonry-item ratio ratio-1x1"
 		        data-bs-toggle="modal" data-bs-target="#{$modalId}"

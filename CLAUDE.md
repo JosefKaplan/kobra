@@ -16,6 +16,8 @@ npm run dev                      # Vite dev server (assets served with HMR)
 php -S localhost:8000 -t www     # run the app (needs MariaDB/MySQL running)
 
 composer phpstan                 # static analysis, level 6, phpstan.neon (must stay clean)
+                                 # the script passes --memory-limit=512M: a cold run (no result cache) peaks
+                                 # ~150 MB, over PHP's default 128M — bare `vendor/bin/phpstan` crashes there
 
 php bin/console migrations:migrate --no-interaction   # apply DB migrations (also seeds the default admin account)
                                  # Single MariaDB-native baseline (Version20260904120000) — it squashes the

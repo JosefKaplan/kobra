@@ -89,10 +89,8 @@
 
 	{var $footerBlock = isset($page) ? $page->getFooterBlock() : null}
 	{var $footerText = trim($footerBlock?->getContent()['text'] ?? '')}
-	{var $footerSlides = array_values(array_filter(
-		is_array($footerBlock?->getContent()['carousel'] ?? null) ? $footerBlock->getContent()['carousel'] : [],
-		fn ($s) => is_array($s) && trim($s['image_url'] ?? '') !== '',
-	))}
+	{var $footerCarousel = $footerBlock?->getContent()['carousel'] ?? null}
+	{var $footerSlides = array_values(array_filter(is_array($footerCarousel) ? $footerCarousel : [], fn ($s) => is_array($s) && trim($s['image_url'] ?? '') !== ''))}
 	<footer n:if="$footerText !== '' || count($footerSlides)" class="py-4">
 		{var $copies = max(2, (int) ceil(12 / max(1, count($footerSlides))))}
 		<div n:if="count($footerSlides)" n:class="footer-carousel, $footerText !== '' ? 'mb-4'" aria-label="Galerie">
