@@ -86,6 +86,7 @@ class LayoutPresenter extends BasePresenter
 
 		$this->template->block = null;
 		$this->template->type = $type;
+		$this->template->carousel = [];
 		$this->setView('edit');
 	}
 
@@ -112,6 +113,26 @@ class LayoutPresenter extends BasePresenter
 
 		$this->template->block = $block;
 		$this->template->type = $block->getType();
+		$this->template->carousel = self::carouselItems($content['carousel'] ?? null);
+	}
+
+	/**
+	 * Normalizes footer carousel rows — from stored content or from the raw POST
+	 * (`carousel[<index>][image_url|alt|link_url]`, see edit.latte / masonry.js): keeps the
+	 * body order, drops rows without an image, re-indexes.
+	 *
+	 * @return list<array{image_url: string, alt: string, link_url: string}>
+	 */
+	private static function carouselItems(mixed $rows): array
+	{
+		return array_values(array_filter(array_map(
+			fn ($row) => [
+				'image_url' => trim((string) (is_array($row) ? ($row['image_url'] ?? '') : '')),
+				'alt'       => trim((string) (is_array($row) ? ($row['alt'] ?? '') : '')),
+				'link_url'  => trim((string) (is_array($row) ? ($row['link_url'] ?? '') : '')),
+			],
+			is_array($rows) ? $rows : [],
+		), fn (array $row) => $row['image_url'] !== ''));
 	}
 
 	protected function createComponentBlockForm(): Form
@@ -168,7 +189,12 @@ class LayoutPresenter extends BasePresenter
 		$block->setName($data->name);
 		$block->setContent($block->getType() === LayoutBlock::TYPE_NAV
 			? ['brand' => trim($data->brand ?? ''), 'links' => $data->content]
-			: ['text' => $this->richTextSanitizer->sanitize($data->content)]);
+			: [
+				'text'     => $this->richTextSanitizer->sanitize($data->content),
+				// The carousel rows are plain inputs inside the same <form>, not Nette form controls
+				// (dynamic list: add/remove/reorder client-side), so they're read from the raw POST.
+				'carousel' => self::carouselItems($this->getHttpRequest()->getPost('carousel')),
+			]);
 		if ($block->getType() === LayoutBlock::TYPE_NAV) {
 			$block->setMenus($this->menuManager->getByIds($data->menus ?? []));
 		}

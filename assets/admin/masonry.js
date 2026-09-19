@@ -110,14 +110,16 @@ function wireSorting(container) {
     });
 }
 
-function initTile(tile) {
-    const container = tile.querySelector('[data-gallery-items]');
-    const template = tile.querySelector('[data-gallery-template]');
+// one editable image list (a masonry tile's gallery, a footer block's carousel) — see the
+// imageListEditor define in Admin/Page/_componentEditor.latte
+function initImageList(list) {
+    const container = list.querySelector('[data-gallery-items]');
+    const template = list.querySelector('[data-gallery-template]');
     if (!container || !template) return;
 
     const addRow = () => cloneRow(container, template);
-    tile.querySelector('[data-gallery-add]')?.addEventListener('click', addRow);
-    wireBulkDropzone(tile.querySelector('[data-gallery-bulk]'), (url) => applyUploadedUrl(addRow(), url));
+    list.querySelector('[data-gallery-add]')?.addEventListener('click', addRow);
+    wireBulkDropzone(list.querySelector('[data-gallery-bulk]'), (url) => applyUploadedUrl(addRow(), url));
     wireSorting(container);
 }
 
@@ -143,7 +145,7 @@ function initBulkCreate(bulkEl) {
 }
 
 export function initMasonry(scope = document) {
-    scope.querySelectorAll('[data-masonry-item]').forEach(initTile);
+    scope.querySelectorAll('[data-image-list]').forEach(initImageList);
     scope.querySelectorAll('[data-masonry-bulk-create]').forEach(initBulkCreate);
 
     document.addEventListener('click', (e) => {

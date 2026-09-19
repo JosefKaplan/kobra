@@ -26,25 +26,32 @@
 {/define}
 
 {*
- * One photo of a `masonry_item` tile's gallery (image + alt text + grip handle + remove).
- * Rendered both for existing photos (componentForm below) and — with $index as the literal
- * placeholder string '__INDEX__' — as the `<template>` masonry.js clones and renumbers when
- * "Přidat fotku" is clicked or the bulk dropzone finishes an upload (see `data-gallery-template`).
+ * One row of an editable image list — image (upload widget) + alt text + grip handle, ↑/↓ arrows
+ * and remove; with $withLink also a URL the image links to. Used for a `masonry_item` tile's
+ * gallery (`gallery[<index>]`) and a footer block's carousel (`carousel[<index>]`, Admin:Layout).
+ * Rendered for existing rows and — with $index as the literal placeholder string '__INDEX__' — as
+ * the `<template>` masonry.js clones and renumbers when "Přidat" is clicked or the bulk dropzone
+ * finishes an upload (see `data-gallery-template`). Order is purely the DOM/POST order.
  *}
-{define galleryImageRow, string $index, array $item, int $componentId}
+{define imageListRow, string $field, string $idPrefix, string $index, array $item, bool $withLink = false}
 	<div class="row g-2 align-items-start mb-2 masonry-item" data-gallery-item>
 		<div class="col-7">
 			{include imageUploadField,
-				id: 'cmp-' . $componentId . '-gallery-' . $index . '-image',
-				name: 'gallery[' . $index . '][image_url]',
+				id: $idPrefix . '-' . $index . '-image',
+				name: $field . '[' . $index . '][image_url]',
 				value: $item['image_url'] ?? '',
 				label: 'Fotka'}
 		</div>
 		<div class="col-5">
-			<label for="cmp-{$componentId}-gallery-{$index}-alt" class="form-label small">Alt text</label>
-			<input type="text" id="cmp-{$componentId}-gallery-{$index}-alt" name="gallery[{$index}][alt]" class="form-control form-control-sm mb-2"
+			<label for="{$idPrefix}-{$index}-alt" class="form-label small">Alt text</label>
+			<input type="text" id="{$idPrefix}-{$index}-alt" name="{$field}[{$index}][alt]" class="form-control form-control-sm mb-2"
 			       value="{$item['alt'] ?? ''}" placeholder="Popis obrázku…">
-			{* controls sit under the alt input so the row never overflows the card at narrow widths *}
+			{if $withLink}
+				<label for="{$idPrefix}-{$index}-link" class="form-label small">Odkaz (nepovinný)</label>
+				<input type="text" id="{$idPrefix}-{$index}-link" name="{$field}[{$index}][link_url]" class="form-control form-control-sm mb-2"
+				       value="{$item['link_url'] ?? ''}" placeholder="https://…">
+			{/if}
+			{* controls sit under the inputs so the row never overflows the card at narrow widths *}
 			<div class="d-flex flex-wrap gap-1">
 				<button type="button" class="btn btn-outline-secondary btn-sm masonry-drag-handle" data-gallery-item-drag-handle
 				        title="Přetáhněte pro změnu pořadí" aria-label="Přetáhněte pro změnu pořadí">
@@ -62,6 +69,39 @@
 				</button>
 			</div>
 		</div>
+	</div>
+{/define}
+
+{* Masonry gallery photo — the imageListRow specialisation used by the masonry_item form below. *}
+{define galleryImageRow, string $index, array $item, int $componentId}
+	{include imageListRow, field: 'gallery', idPrefix: 'cmp-' . $componentId . '-gallery', index: $index, item: $item}
+{/define}
+
+{*
+ * The shared "editable image list" block: bulk dropzone (one row per dropped file), the rows,
+ * an "add empty row" button and the row <template>. masonry.js mounts on [data-image-list].
+ *}
+{define imageListEditor, string $field, string $idPrefix, array $items, bool $withLink = false, string $addLabel = 'Přidat fotku'}
+	<div data-image-list>
+		<div class="mb-2" data-gallery-bulk data-upload-endpoint="{link uploadImage!}">
+			<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
+				<span>Přetáhněte sem více obrázků nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span>.</span>
+				<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-label="Vybrat obrázky" data-input>
+			</div>
+			<div class="small text-danger mt-1" data-error hidden></div>
+		</div>
+		<div class="small text-muted mb-2" n:if="count($items)">
+			<i class="bi bi-grip-vertical"></i> Pořadí změníte přetažením za úchyt nebo šipkami. Ukládá se s formulářem.
+		</div>
+		<div n:inner-foreach="$items as $i => $item" data-gallery-items>
+			{include imageListRow, field: $field, idPrefix: $idPrefix, index: (string) $i, item: $item, withLink: $withLink}
+		</div>
+		<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-add>
+			<i class="bi bi-plus-lg me-1"></i>{$addLabel}
+		</button>
+		<template data-gallery-template>
+			{include imageListRow, field: $field, idPrefix: $idPrefix, index: '__INDEX__', item: [], withLink: $withLink}
+		</template>
 	</div>
 {/define}
 
@@ -250,7 +290,7 @@
 			</div>
 
 		{elseif $component->getType() === 'masonry_item'}
-			<div class="row g-4" data-masonry-item>
+			<div class="row g-4">
 				<div class="col-md-6">
 					{include imageUploadField,
 						id: 'cmp-' . $componentId . '-main_image_url',
@@ -275,25 +315,7 @@
 				</div>
 				<div class="col-md-6">
 					<div class="form-label d-block">Další fotky (galerie po rozkliknutí)</div>
-					<div class="mb-2" data-gallery-bulk data-upload-endpoint="{link uploadImage!}">
-						<div class="image-upload-dropzone border rounded-3 p-2 d-flex align-items-center gap-2 small text-muted" data-dropzone>
-							<span>Přetáhněte sem více obrázků nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span>.</span>
-							<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-label="Vybrat obrázky" data-input>
-						</div>
-						<div class="small text-danger mt-1" data-error hidden></div>
-					</div>
-					<div class="small text-muted mb-2" n:if="!empty($componentContent['gallery'])">
-						<i class="bi bi-grip-vertical"></i> Pořadí fotek změníte přetažením za úchyt nebo šipkami. Ukládá se s dlaždicí.
-					</div>
-					<div n:inner-foreach="$componentContent['gallery'] ?? [] as $i => $item" data-gallery-items>
-						{include galleryImageRow, index: (string) $i, item: $item, componentId: $componentId}
-					</div>
-					<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-add>
-						<i class="bi bi-plus-lg me-1"></i>Přidat fotku
-					</button>
-					<template data-gallery-template>
-						{include galleryImageRow, index: '__INDEX__', item: [], componentId: $componentId}
-					</template>
+					{include imageListEditor, field: 'gallery', idPrefix: 'cmp-' . $componentId . '-gallery', items: $componentContent['gallery'] ?? []}
 				</div>
 			</div>
 

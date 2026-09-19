@@ -12,7 +12,9 @@ use Doctrine\ORM\Mapping as ORM;
  * A reusable navbar or footer, configured centrally in the admin (Admin:Layout)
  * and assigned to pages via Page::$navBlock / Page::$footerBlock dropdowns.
  *
- * Content keys by type: `nav` → ['links' => "Text | URL\n…"], `footer` → ['text' => sanitized HTML].
+ * Content keys by type: `nav` → ['brand' => string, 'links' => "Text | URL\n…"],
+ * `footer` → ['text' => sanitized HTML, 'carousel' => [['image_url' => …, 'alt' => …, 'link_url' => …], …]]
+ * (the carousel is an endless image marquee rendered above the text — see Front/@layout.latte).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'layout_blocks')]

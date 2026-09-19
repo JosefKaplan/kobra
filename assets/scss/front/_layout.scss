@@ -182,8 +182,6 @@ $masonry-max-width: 1290px;
   }
 
   // --- animations ---------------------------------------------------------
-  // opening: the whole book fades in while scaling up slightly (overrides
-  // Bootstrap's default translateY(-50px) slide for .modal.fade)
   &.fade {
     transition: opacity .25s ease;
 
@@ -250,6 +248,55 @@ $masonry-max-width: 1290px;
   .masonry-book-modal.show .book-gallery img {
     animation: none;
   }
+}
+
+$carousel-height: 120px;
+$carousel-gap: 1.5rem;
+
+.footer-carousel {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 2%, #000 98%, transparent);
+
+  &:hover .footer-carousel-track {
+    animation-play-state: paused;
+  }
+}
+
+.footer-carousel-track {
+  opacity: .75;
+  display: flex;
+  align-items: center;
+  gap: $carousel-gap;
+  width: max-content;
+  padding-right: $carousel-gap;
+  animation-name: footer-carousel-scroll;
+  animation-duration: var(--carousel-duration, 36s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.footer-carousel-item {
+  flex: 0 0 auto;
+  display: block;
+
+  img {
+    display: block;
+    height: $carousel-height;
+    width: auto;
+  }
+}
+
+a.footer-carousel-item {
+  transition: opacity .15s ease;
+
+  &:hover {
+    opacity: .75;
+  }
+}
+
+@keyframes footer-carousel-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% / var(--carousel-copies, 2))); }
 }
 
 .page-contact-form form {

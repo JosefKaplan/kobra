@@ -7,8 +7,6 @@ use App\Entity\PageComponent;
 use App\Entity\LayoutBlock;
 use App\Helpers\BootstrapFormRenderer;
 use App\Helpers\FormHelper;
-use App\Helpers\ImageUploadException;
-use App\Helpers\ImageUploader;
 use App\Helpers\RichTextSanitizer;
 use App\Models\LayoutBlockManager;
 use App\Models\PageManager;
@@ -19,7 +17,6 @@ use Contributte\Datagrid\Datagrid;
 use Contributte\Datagrid\Exception\DatagridException;
 use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
-use Nette\Http\FileUpload;
 use Nette\Http\IResponse;
 use Nette\Utils\Strings;
 
@@ -40,6 +37,15 @@ class PagePresenter extends BasePresenter
 	/** Child types that exist only inside their container (see CONTAINER_TYPES) — no page-level counterpart. */
 	private const CHILD_ONLY_TYPES = ['masonry_item'];
 
+	/**
+	 * Containers whose dedicated screen has a bulk "one child per dropped image" dropzone
+	 * (handleCreateMasonryItems): the child type to create and which of its content keys
+	 * receives the uploaded URL.
+	 */
+	private const BULK_IMAGE_CHILDREN = [
+		'masonry' => ['child' => 'masonry_item', 'urlKey' => 'main_image_url', 'one' => 'Dlaždice přidána.', 'many' => 'Přidáno dlaždic: %d.'],
+	];
+
 	#[Inject]
 	public PageManager $pageManager;
 
@@ -51,9 +57,6 @@ class PagePresenter extends BasePresenter
 
 	#[Inject]
 	public LayoutBlockManager $layoutBlockManager;
-
-	#[Inject]
-	public ImageUploader $imageUploader;
 
 	protected function startup(): void
 	{
@@ -317,10 +320,16 @@ class PagePresenter extends BasePresenter
 	 */
 	public function handleCreateMasonryItems(int $parentId): void
 	{
+		$this->createChildrenFromUploads($parentId, 'masonry');
+	}
+
+	private function createChildrenFromUploads(int $parentId, string $parentType): void
+	{
 		$this->checkSameSiteRequest();
+		$bulk = self::BULK_IMAGE_CHILDREN[$parentType];
 
 		$parent = $this->pageManager->getComponentById($parentId);
-		if (!$parent || $parent->getType() !== 'masonry') {
+		if (!$parent || $parent->getType() !== $parentType) {
 			$this->error('Komponenta nenalezena.');
 		}
 
@@ -331,14 +340,14 @@ class PagePresenter extends BasePresenter
 		), fn (string $url) => $url !== ''));
 
 		foreach ($urls as $url) {
-			$content = self::defaultContent('masonry_item');
-			$content['main_image_url'] = $url;
-			// One flush for the whole batch (below): all-or-nothing, and no per-tile changeset pass
-			$this->persistNewComponent($parent->getPage(), $parent, 'masonry_item', $content, flush: false);
+			$content = self::defaultContent($bulk['child']);
+			$content[$bulk['urlKey']] = $url;
+			// One flush for the whole batch (below): all-or-nothing, and no per-child changeset pass
+			$this->persistNewComponent($parent->getPage(), $parent, $bulk['child'], $content, flush: false);
 		}
 		if ($urls !== []) {
 			$this->pageManager->save($parent->getPage());
-			$this->flashMessage(count($urls) === 1 ? 'Dlaždice přidána.' : 'Přidáno dlaždic: ' . count($urls) . '.', 'success');
+			$this->flashMessage(count($urls) === 1 ? $bulk['one'] : sprintf($bulk['many'], count($urls)), 'success');
 		}
 		// Files the browser couldn't upload (wrong type, too big, server error) — re-shown here because
 		// the redirect below would otherwise replace the page the dropzone reported them on.
@@ -497,40 +506,6 @@ class PagePresenter extends BasePresenter
 		$this->redirect('this');
 	}
 
-	/**
-	 * AJAX endpoint behind the reusable image-upload widget (admin.js, `input[data-image-upload]`)
-	 * — used by any content field that holds an image URL (hero.image_url, image.url, a masonry
-	 * tile's main image and gallery), not tied to a specific component. Responds with JSON, never redirects.
-	 */
-	public function handleUploadImage(): void
-	{
-		$this->checkSameSiteRequest();
-
-		$file = $this->getHttpRequest()->getFile('image');
-		if (!$file instanceof FileUpload) {
-			// A body over php.ini's post_max_size never reaches us as a file at all — PHP drops
-			// $_FILES (and $_POST) wholesale, so without this check the admin would be told they
-			// sent nothing. (The per-file upload_max_filesize case does arrive, as UPLOAD_ERR_INI_SIZE,
-			// and is worded by ImageUploader.)
-			$contentLength = (int) ($this->getHttpRequest()->getHeader('Content-Length') ?? 0);
-			$postMax = self::iniBytes((string) ini_get('post_max_size'));
-			if ($postMax > 0 && $contentLength > $postMax) {
-				$this->sendJson(['error' => 'Soubor je příliš velký pro aktuální nastavení serveru (post_max_size v php.ini).']);
-			}
-			// sendJson() never actually returns (it throws Nette\Application\AbortException
-			// internally) — PHPStan's Nette stubs know this, so $file is narrowed below.
-			$this->sendJson(['error' => 'Nebyl nahrán žádný soubor.']);
-		}
-
-		try {
-			$upload = $this->imageUploader->upload($file, $this->getUserEntity());
-		} catch (ImageUploadException $e) {
-			$this->sendJson(['error' => $e->getMessage()]);
-		}
-
-		$this->sendJson(['url' => $upload->getUrl()]);
-	}
-
 	public function handleMoveComponent(int $componentId, string $direction): void
 	{
 		$this->checkSameSiteRequest();
@@ -586,30 +561,5 @@ class PagePresenter extends BasePresenter
 			$this->flashMessage('Komponenta smazána.', 'success');
 		}
 		$this->redirect('this');
-	}
-
-	/** php.ini shorthand ("8M", "512K", "1G", plain bytes) to bytes; 0 for empty/unlimited. */
-	private static function iniBytes(string $value): int
-	{
-		$value = trim($value);
-		if ($value === '' || $value === '-1') {
-			return 0;
-		}
-		$unit = strtolower(substr($value, -1));
-		$number = (int) $value;
-		return match ($unit) {
-			'g' => $number * 1024 * 1024 * 1024,
-			'm' => $number * 1024 * 1024,
-			'k' => $number * 1024,
-			default => $number,
-		};
-	}
-
-	// Same SameSite-cookie check Nette\Application\UI\Form does internally, for the raw HTML forms in edit.latte which carry no CSRF token.
-	private function checkSameSiteRequest(): void
-	{
-		if (!$this->getHttpRequest()->isSameSite()) {
-			$this->error('Neplatný požadavek (CSRF ochrana).', IResponse::S403_Forbidden);
-		}
 	}
 }

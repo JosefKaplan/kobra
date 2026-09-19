@@ -61,9 +61,6 @@
 	<main class="py-5">
 		<div class="container">
 			{foreach $flashes as $flash}
-				{* Nette actually hands this over as plain stdClass ('message'/'type' set dynamically in
-				   Control::flashMessage()); App\Helpers\FlashMessage is a shape-only stand-in purely for
-				   {varType} IDE hints — it's never instantiated and has no effect on the compiled template. *}
 				{varType App\Helpers\FlashMessage $flash}
 				<div class="alert alert-{$flash->type} alert-dismissible fade show mb-4" role="alert">
 					{$flash->message}
@@ -75,12 +72,31 @@
 		</div>
 	</main>
 
-	{* The footer exists only when the displayed CMS page has a footer block assigned
-	   with non-empty content (sanitized rich text) — there is no default footer. *}
 	{var $footerBlock = isset($page) ? $page->getFooterBlock() : null}
 	{var $footerText = trim($footerBlock?->getContent()['text'] ?? '')}
-	<footer n:if="$footerText !== ''" class="py-4 border-top bg-white">
-		<div class="container small text-muted rich-text">{$footerText|noescape}</div>
+	{var $footerSlides = array_values(array_filter(
+		is_array($footerBlock?->getContent()['carousel'] ?? null) ? $footerBlock->getContent()['carousel'] : [],
+		fn ($s) => is_array($s) && trim($s['image_url'] ?? '') !== '',
+	))}
+	<footer n:if="$footerText !== '' || count($footerSlides)" class="py-4">
+		{var $copies = max(2, (int) ceil(12 / max(1, count($footerSlides))))}
+		<div n:if="count($footerSlides)" n:class="footer-carousel, $footerText !== '' ? 'mb-4'" aria-label="Galerie">
+			<div class="footer-carousel-track" style="--carousel-copies: {$copies}; --carousel-duration: {$copies * count($footerSlides) * 3}s">
+				{for $copy = 0; $copy < $copies; $copy++}
+					{foreach $footerSlides as $slide}
+						{var $slideLink = trim($slide['link_url'] ?? '')}
+						{* every repeat after the first is presentational only — hidden from assistive tech *}
+						<a n:if="$slideLink !== ''" href="{$slideLink}" class="footer-carousel-item" n:attr="aria-hidden: $copy > 0 ? 'true' : null, tabindex: $copy > 0 ? '-1' : null">
+							<img src="{$slide['image_url']}" alt="{$slide['alt'] ?? ''}" loading="lazy">
+						</a>
+						<div n:if="$slideLink === ''" class="footer-carousel-item" n:attr="aria-hidden: $copy > 0 ? 'true' : null">
+							<img src="{$slide['image_url']}" alt="{$slide['alt'] ?? ''}" loading="lazy">
+						</div>
+					{/foreach}
+				{/for}
+			</div>
+		</div>
+		<div n:if="$footerText !== ''" class="container small text-muted rich-text">{$footerText|noescape}</div>
 	</footer>
 
 </body>
