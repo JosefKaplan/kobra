@@ -48,6 +48,13 @@ $masonry-gap-color: #fff;
 $book-bg: $canvas-bg;
 $book-control: #a7a5a6;
 $book-control-hover: #231f20;
+// "Kontaktní údaje" block (contact_info): white cards on the canvas, lavender accent from the Kobra imagery
+$contact-text: $body-color;
+$contact-muted: #6f6f6f;
+$contact-accent: #6e68b8;
+$contact-accent-soft: rgba($contact-accent, .12);
+$contact-card-bg: $white;
+$contact-line: #dcdcde;
 
 $hero-accent: #4f46e5;
 $hero-bg-from: rgba($hero-accent, .1);
@@ -76,6 +83,7 @@ $type-image: #a15936;
 $type-hero: #828a2e;
 $type-cta: #419130;
 $type-contact-form: #309169;
+$type-contact-info: #6b6a3a;
 $type-heading: #367da1;
 $type-text-block: #3e36a1;
 $type-columns: #8f36a1;

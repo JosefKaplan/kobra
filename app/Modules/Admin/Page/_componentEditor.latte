@@ -144,6 +144,9 @@
 		{elseif $component->getType() === 'contact_form'}
 			<i class="bi bi-envelope-paper text-type-contact_form"></i>
 			<span class="fw-semibold">Kontaktní formulář</span>
+		{elseif $component->getType() === 'contact_info'}
+			<i class="bi bi-person-lines-fill text-type-contact_info"></i>
+			<span class="fw-semibold">Kontaktní údaje</span>
 		{else}
 			<i class="bi bi-puzzle text-muted"></i>
 			<span class="fw-semibold">{$component->getType()}</span>
@@ -378,6 +381,78 @@
 					<label for="cmp-{$componentId}-button_text" class="form-label">Text tlačítka</label>
 					<input type="text" id="cmp-{$componentId}-button_text" name="button_text" class="form-control"
 					       value="{$componentContent['button_text'] ?? ''}" placeholder="Odeslat">
+				</div>
+			</div>
+
+		{elseif $component->getType() === 'contact_info'}
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-heading" class="form-label fw-semibold">Nadpis</label>
+				<input type="text" id="cmp-{$componentId}-heading" name="heading" class="form-control"
+				       value="{$componentContent['heading'] ?? ''}" placeholder="Napište nám, nebo se zastavte ve studiu.">
+			</div>
+			<div class="mb-3">
+				<label for="cmp-{$componentId}-intro" class="form-label">Úvodní text</label>
+				<textarea id="cmp-{$componentId}-intro" name="intro" class="form-control" rows="2"
+				          placeholder="Krátká věta pod nadpisem…">{$componentContent['intro'] ?? ''}</textarea>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-email" class="form-label">E-mail</label>
+					<input type="email" id="cmp-{$componentId}-email" name="email" class="form-control"
+					       value="{$componentContent['email'] ?? ''}" placeholder="info@kobra.cz">
+				</div>
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-phone" class="form-label">Telefon</label>
+					<input type="text" id="cmp-{$componentId}-phone" name="phone" class="form-control"
+					       value="{$componentContent['phone'] ?? ''}" placeholder="+420 777 790 035">
+				</div>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-studio_address" class="form-label">Adresa studia</label>
+					<textarea id="cmp-{$componentId}-studio_address" name="studio_address" class="form-control" rows="3"
+					          placeholder="Jílkova 38&#10;615 00 Brno&#10;Česká republika">{$componentContent['studio_address'] ?? ''}</textarea>
+				</div>
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-billing_address" class="form-label">Sídlo a fakturační adresa</label>
+					<textarea id="cmp-{$componentId}-billing_address" name="billing_address" class="form-control" rows="3"
+					          placeholder="Sentice 117&#10;666 03 Sentice&#10;Česká republika">{$componentContent['billing_address'] ?? ''}</textarea>
+				</div>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-company" class="form-label">Firma</label>
+					<input type="text" id="cmp-{$componentId}-company" name="company" class="form-control"
+					       value="{$componentContent['company'] ?? ''}" placeholder="Kobra Design, s. r. o.">
+				</div>
+				<div class="col-6 col-sm-3">
+					<label for="cmp-{$componentId}-ico" class="form-label">IČ</label>
+					<input type="text" id="cmp-{$componentId}-ico" name="ico" class="form-control"
+					       value="{$componentContent['ico'] ?? ''}" placeholder="63470080">
+				</div>
+				<div class="col-6 col-sm-3">
+					<label for="cmp-{$componentId}-dic" class="form-label">DIČ</label>
+					<input type="text" id="cmp-{$componentId}-dic" name="dic" class="form-control"
+					       value="{$componentContent['dic'] ?? ''}" placeholder="CZ 63470080">
+				</div>
+				<div class="col-12">
+					<label for="cmp-{$componentId}-register" class="form-label">Zápis v rejstříku</label>
+					<input type="text" id="cmp-{$componentId}-register" name="register" class="form-control"
+					       value="{$componentContent['register'] ?? ''}" placeholder="Zápis v obchodním rejstříku u KS Brno, oddíl C, vložka 19893">
+				</div>
+			</div>
+			<div class="row g-3 mb-3">
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-social" class="form-label">Sociální sítě</label>
+					<textarea id="cmp-{$componentId}-social" name="social" class="form-control font-monospace" rows="3"
+					          placeholder="Instagram | https://instagram.com/…&#10;Facebook | https://facebook.com/…">{$componentContent['social'] ?? ''}</textarea>
+					<div class="form-text">Jeden odkaz na řádek, <code>Název | URL</code>. Ikona se pozná podle adresy (Instagram, Facebook, LinkedIn, Behance, …).</div>
+				</div>
+				<div class="col-sm-6">
+					<label for="cmp-{$componentId}-links" class="form-label">Další odkazy (patička bloku)</label>
+					<textarea id="cmp-{$componentId}-links" name="links" class="form-control font-monospace" rows="3"
+					          placeholder="GDPR | /gdpr&#10;Zásady cookies | /cookies">{$componentContent['links'] ?? ''}</textarea>
+					<div class="form-text">Jeden odkaz na řádek, <code>Text | URL</code>.</div>
 				</div>
 			</div>
 

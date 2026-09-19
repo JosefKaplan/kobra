@@ -37,6 +37,12 @@ class PagePresenter extends BasePresenter
 	/** Child types that exist only inside their container (see CONTAINER_TYPES) — no page-level counterpart. */
 	private const CHILD_ONLY_TYPES = ['masonry_item'];
 
+	/** Content keys of the `contact_info` component — every one a plain-text field of its editor form. */
+	private const CONTACT_INFO_KEYS = [
+		'heading', 'intro', 'email', 'phone', 'studio_address', 'billing_address',
+		'company', 'ico', 'dic', 'register', 'social', 'links',
+	];
+
 	/**
 	 * Containers whose dedicated screen has a bulk "one child per dropped image" dropzone
 	 * (handleCreateMasonryItems): the child type to create and which of its content keys
@@ -380,6 +386,7 @@ class PagePresenter extends BasePresenter
 			'masonry_item'  => ['main_image_url' => '', 'main_image_alt' => '', 'heading' => '', 'text' => '', 'gallery' => []],
 			'cta'           => ['heading' => '', 'body' => '', 'button_text' => '', 'button_url' => '', 'button_style' => 'primary'],
 			'contact_form'  => ['heading' => '', 'action_url' => '', 'button_text' => 'Odeslat', 'email_placeholder' => 'Váš e-mail…', 'message_placeholder' => 'Vaše zpráva…'],
+			'contact_info'  => array_fill_keys(self::CONTACT_INFO_KEYS, ''),
 			default         => [],
 		};
 	}
@@ -488,6 +495,11 @@ class PagePresenter extends BasePresenter
 				'email_placeholder'   => $post['email_placeholder'] ?? '',
 				'message_placeholder' => $post['message_placeholder'] ?? '',
 			],
+			// all plain text (auto-escaped on render); `social`/`links` are "Text | URL" lines for LinkList
+			'contact_info' => array_map(
+				fn (string $key) => trim((string) ($post[$key] ?? '')),
+				array_combine(self::CONTACT_INFO_KEYS, self::CONTACT_INFO_KEYS),
+			),
 			default => $component->getContent(),
 		};
 

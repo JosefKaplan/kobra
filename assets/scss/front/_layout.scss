@@ -512,6 +512,205 @@ a.footer-carousel-item {
   to { transform: translateX(calc(-100% / var(--carousel-copies, 2))); }
 }
 
+// "Kontaktní údaje" (contact_info): breaks out of the 900px article to the masonry grid's width like
+// .page-masonry — heading + big e-mail/phone links + social buttons on the left, white address and
+// company cards on the canvas on the right, legal links under a hairline at the bottom.
+.page-contact {
+  width: $wide-width;
+  margin-left: calc(50% - #{$wide-width} / 2);
+  padding-top: 1.5rem;
+  color: $contact-text;
+
+  // :where() keeps these at single-class specificity, so the element rules below override them
+  :where(a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :where(ul) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.page-contact-heading {
+  max-width: 14em;
+  margin-bottom: 1rem;
+  font-size: clamp(1.75rem, 3vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+}
+
+.page-contact-intro {
+  max-width: 32em;
+  margin-bottom: 2rem;
+  color: $contact-muted;
+}
+
+.page-contact-icon {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: $contact-accent-soft;
+  color: $contact-accent;
+  font-size: 1.2rem;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+// e-mail and phone: large type with an underline that draws in on hover
+.page-contact-primary {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 2rem;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 100%;
+
+    &:hover,
+    &:focus-visible {
+      .page-contact-icon {
+        background: $contact-accent;
+        color: $white;
+      }
+
+      .page-contact-primary-text {
+        background-size: 100% 1px;
+      }
+    }
+  }
+}
+
+.page-contact-primary-text {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 500;
+  letter-spacing: -.01em;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size .3s ease;
+}
+
+.page-contact-social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .625rem;
+
+  a {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid $contact-line;
+    border-radius: 50%;
+    background: $contact-card-bg;
+    font-size: 1.1rem;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+
+    &:hover,
+    &:focus-visible {
+      border-color: $contact-accent;
+      background: $contact-accent;
+      color: $white;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.page-contact-card {
+  height: 100%;
+  padding: 1.75rem;
+  background: $contact-card-bg;
+  border-radius: $masonry-radius;
+
+  address,
+  p {
+    margin-bottom: 0;
+  }
+
+  p + p {
+    margin-top: .25rem;
+  }
+}
+
+.page-contact-card-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: 1rem;
+  color: $contact-muted;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+
+  .bi {
+    color: $contact-accent;
+    font-size: 1rem;
+  }
+}
+
+.page-contact-map {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: 1rem;
+  color: $contact-accent;
+  font-size: .875rem;
+  font-weight: 500;
+
+  .bi {
+    transition: transform .2s ease;
+  }
+
+  &:hover .bi,
+  &:focus-visible .bi {
+    transform: translate(2px, -2px);
+  }
+}
+
+.page-contact-company {
+  font-weight: 600;
+}
+
+.page-contact-register {
+  color: $contact-muted;
+  font-size: .875rem;
+}
+
+.page-contact-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid $contact-line;
+  font-size: .875rem;
+
+  a {
+    color: $contact-muted;
+    transition: color .15s ease;
+
+    &:hover,
+    &:focus-visible {
+      color: $contact-text;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-contact *,
+  .page-contact *::before {
+    transition: none !important;
+  }
+}
+
 .page-contact-form form {
   max-width: 480px;
   margin-inline: auto;

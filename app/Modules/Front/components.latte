@@ -49,7 +49,6 @@
 
 		{var $tileList = array_values($tiles)}
 		{foreach $tileList as $i => $tile}
-			{var $i}
 			{include masonryItemModal, component: $tile, prev: $tileList[($i - 1 + count($tileList)) % count($tileList)], next: $tileList[($i + 1) % count($tileList)]}
 		{/foreach}
 
@@ -99,6 +98,78 @@
 					<button type="submit" class="btn btn-primary">{$componentContent['button_text'] ?? 'Odeslat'}</button>
 				</div>
 			</form>
+		</section>
+
+	{case 'contact_info'}
+		{var $contactHeading = trim($componentContent['heading'] ?? '')}
+		{var $contactIntro = trim($componentContent['intro'] ?? '')}
+		{var $email = trim($componentContent['email'] ?? '')}
+		{var $phone = trim($componentContent['phone'] ?? '')}
+		{var $addresses = array_filter([
+			['title' => 'Studio', 'icon' => 'geo-alt', 'text' => trim($componentContent['studio_address'] ?? '')],
+			['title' => 'Sídlo a fakturační adresa', 'icon' => 'buildings', 'text' => trim($componentContent['billing_address'] ?? '')],
+		], fn ($a) => $a['text'] !== '')}
+		{var $company = trim($componentContent['company'] ?? '')}
+		{var $companyIds = implode(' · ', array_filter([
+			trim($componentContent['ico'] ?? '') !== '' ? 'IČ ' . trim($componentContent['ico']) : '',
+			trim($componentContent['dic'] ?? '') !== '' ? 'DIČ ' . trim($componentContent['dic']) : '',
+		]))}
+		{var $register = trim($componentContent['register'] ?? '')}
+		{var $socialLinks = App\Helpers\LinkList::parse($componentContent['social'] ?? '')}
+		{var $legalLinks = App\Helpers\LinkList::parse($componentContent['links'] ?? '')}
+		{* as wide as the masonry grid: big e-mail/phone links on the left, address + company cards on the right *}
+		<section class="page-contact mb-4" n:attr="style: $spacingStyle">
+			<div class="row g-4 g-lg-5">
+				<div class="col-lg-5">
+					<h2 n:if="$contactHeading !== ''" class="page-contact-heading">{$contactHeading}</h2>
+					<p n:if="$contactIntro !== ''" class="page-contact-intro">{$contactIntro|breakLines}</p>
+					<ul n:if="$email !== '' || $phone !== ''" class="page-contact-primary">
+						<li n:if="$email !== ''">
+							<a href="mailto:{$email}">
+								<span class="page-contact-icon"><i class="bi bi-envelope" aria-hidden="true"></i></span>
+								<span class="page-contact-primary-text">{$email}</span>
+							</a>
+						</li>
+						<li n:if="$phone !== ''">
+							<a href="tel:{preg_replace('~[^+0-9]~', '', $phone)}">
+								<span class="page-contact-icon"><i class="bi bi-telephone" aria-hidden="true"></i></span>
+								<span class="page-contact-primary-text">{$phone}</span>
+							</a>
+						</li>
+					</ul>
+					<ul n:if="count($socialLinks)" class="page-contact-social">
+						<li n:foreach="$socialLinks as $link">
+							<a href="{$link['url']}" target="_blank" rel="noopener" title="{$link['label']}" aria-label="{$link['label']}">
+								<i class="bi bi-{App\Helpers\SocialIcon::for($link['url'])}" aria-hidden="true"></i>
+							</a>
+						</li>
+					</ul>
+				</div>
+				<div n:if="count($addresses) || $company !== '' || $companyIds !== '' || $register !== ''" class="col-lg-7">
+					<div class="row g-3">
+						<div n:foreach="$addresses as $address" class="col-sm-6">
+							<div class="page-contact-card">
+								<div class="page-contact-card-title"><i class="bi bi-{$address['icon']}" aria-hidden="true"></i>{$address['title']}</div>
+								<address>{$address['text']|breakLines}</address>
+								<a class="page-contact-map" href="https://www.google.com/maps/search/?api=1&query={str_replace(["\r\n", "\n"], ', ', $address['text'])|escapeUrl}" target="_blank" rel="noopener">
+									Zobrazit na mapě<i class="bi bi-arrow-up-right" aria-hidden="true"></i>
+								</a>
+							</div>
+						</div>
+						<div n:if="$company !== '' || $companyIds !== '' || $register !== ''" class="col-12">
+							<div class="page-contact-card">
+								<div class="page-contact-card-title"><i class="bi bi-receipt" aria-hidden="true"></i>Fakturační údaje</div>
+								<p n:if="$company !== ''" class="page-contact-company">{$company}</p>
+								<p n:if="$companyIds !== ''">{$companyIds}</p>
+								<p n:if="$register !== ''" class="page-contact-register">{$register}</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<nav n:if="count($legalLinks)" class="page-contact-legal" aria-label="Právní informace">
+				<a n:foreach="$legalLinks as $link" href="{$link['url']}">{$link['label']}</a>
+			</nav>
 		</section>
 
 	{default}
