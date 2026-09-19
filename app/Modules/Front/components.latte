@@ -49,6 +49,7 @@
 
 		{var $tileList = array_values($tiles)}
 		{foreach $tileList as $i => $tile}
+			{var $i}
 			{include masonryItemModal, component: $tile, prev: $tileList[($i - 1 + count($tileList)) % count($tileList)], next: $tileList[($i + 1) % count($tileList)]}
 		{/foreach}
 
