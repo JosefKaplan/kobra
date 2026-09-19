@@ -12,8 +12,21 @@ main {
   flex: 1;
 }
 
-// Masonry grid and studio header share this width, so their left edges line up.
+// White page with an inset gray panel (.site-canvas: header + content); the footer runs on white below it.
+$panel-inset: 3vw;
+
+// Header, masonry grid and tile detail share this width, so their left edges line up.
 $wide-max-width: 1290px;
+$wide-width: min(#{$wide-max-width}, 100vw - 2 * #{$panel-inset} - 3rem);
+
+.site-canvas {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  margin: $panel-inset $panel-inset 0;
+  padding-bottom: 3rem;
+  background: $canvas-bg;
+}
 
 .navbar-brand {
   font-weight: 700;
@@ -31,7 +44,7 @@ $wide-max-width: 1290px;
 }
 
 .site-header-inner {
-  width: min(#{$wide-max-width}, 100vw - 3rem);
+  width: $wide-width;
   margin-inline: auto;
   display: flex;
   align-items: center;
@@ -144,15 +157,18 @@ $wide-max-width: 1290px;
   }
 }
 
-$masonry-gap: .4rem;
+$masonry-gap: 3px;
 $masonry-radius: 0;
 
 .page-masonry {
-  width: min(#{$wide-max-width}, 100vw - 3rem);
-  margin-left: calc(50% - min(#{$wide-max-width}, 100vw - 3rem) / 2);
+  width: $wide-width;
+  margin-left: calc(50% - #{$wide-width} / 2);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(max(180px, calc((100% - 4 * #{$masonry-gap}) / 5)), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(max(140px, calc((100% - 4 * #{$masonry-gap}) / 5)), 1fr));
   gap: $masonry-gap;
+  // the design frames every tile with a thin white line, the outer edge included
+  padding: $masonry-gap;
+  background: $masonry-gap-color;
 
   img {
     object-fit: cover;
@@ -176,76 +192,194 @@ $masonry-radius: 0;
 }
 
 .masonry-book-modal {
-  .modal-content {
-    background: $body-bg;
+  // Bootstrap's fullscreen dialog is exactly one viewport tall and expects a .modal-body to scroll
+  // inside it; the book has none, so dialog + content grow with the book instead and the whole
+  // .modal scrolls — otherwise a book taller than the screen overflows the background and,
+  // with no backdrop, the page underneath shows through
+  .modal-dialog {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100%;
   }
 
-  .modal-body {
-    padding: 3.5rem 3rem 4.5rem;
-    min-height: 100%;
+  .modal-content {
+    flex: 1 0 auto;
+    height: auto;
+    background: $book-bg;
+  }
+
+  // same width as the grid behind it; the arrows sit at the bottom of the viewport
+  .book-frame {
+    // --book-h: height left for the photos between the close button and the arrow row;
+    // gallery columns scale with it, so main photo + gallery fit a normal-height screen
+    --book-top: max(5rem, 12vh);
+    --book-h: calc(100vh - var(--book-top) - 5rem);
+    --book-col: min(18.6%, var(--book-h) * .25);
+    position: relative;
+    flex: 1 0 auto;
+    width: $wide-width;
+    margin-inline: auto;
+    padding: var(--book-top) 0 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .book-close,
+  .book-nav {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: $book-control;
+    line-height: 0;
+    transition: color .15s ease;
+
+    &:hover,
+    &:focus-visible {
+      color: $book-control-hover;
+    }
+
+    svg {
+      fill: none;
+      stroke: currentColor;
+    }
   }
 
   .book-close {
     position: absolute;
-    top: 1rem;
-    right: 1.25rem;
+    top: calc(var(--book-top) - 4.25rem);
+    right: 0;
     z-index: 2;
-    opacity: .6;
-  }
 
-  // plain "<" / ">" in the bottom corners, like a book's page-turn
-  .book-nav {
-    position: absolute;
-    bottom: 1.25rem;
-    z-index: 2;
-    border: 0;
-    padding: .25rem .5rem;
-    background: none;
-    color: $body-color;
-    font-size: 1.5rem;
-    line-height: 1;
-    opacity: .6;
-    transition: opacity .15s ease;
-
-    &:hover {
-      opacity: 1;
+    svg {
+      width: 3.25rem;
+      height: 3.25rem;
+      stroke-width: .8;
     }
   }
 
-  .book-nav-prev { left: 1.25rem; }
-  .book-nav-next { right: 1.25rem; }
-
-  // single image: centred, fitted to the viewport
-  .book-main img {
-    display: block;
-    max-width: 100%;
-    max-height: calc(100vh - 8rem);
-    margin-inline: auto;
-    border-radius: $masonry-radius;
-  }
-
-  // main image left + gallery right, both starting at the same top edge
-  .book-with-gallery {
+  .book-body {
+    flex: 1;
+    display: flex;
     align-items: flex-start;
+    gap: .5rem;
+  }
 
-    .book-main img {
-      width: 100%;
-      max-height: none;
+  // hugs the photo, so the gallery sits right next to it (as in the design); once gallery
+  // photos get swapped in, masonry.js pins --book-main-w so the gallery doesn't jump around
+  .book-main {
+    flex: 0 1 auto;
+    width: var(--book-main-w, auto);
+    min-width: 0;
+
+    img {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+      max-height: var(--book-h);
+      border-radius: $masonry-radius;
     }
   }
 
+  .book-caption {
+    margin-top: 1rem;
+    font-size: .9375rem;
+
+    p {
+      margin-bottom: 0;
+    }
+  }
+
+  // one narrow column per --gallery-cols, photos keep their own aspect ratio
   .book-gallery {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: .75rem;
-    align-content: start;
+    flex: 0 0 calc(var(--gallery-cols, 1) * var(--book-col) + (var(--gallery-cols, 1) - 1) * .5rem);
+    display: flex;
+    gap: .5rem;
+  }
+
+  .book-gallery-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
 
     img {
       display: block;
       width: 100%;
-      aspect-ratio: 1 / 1;
-      object-fit: cover;
+      height: auto;
       border-radius: $masonry-radius;
+    }
+  }
+
+  // gallery photo = button: shows it in place of the main photo
+  .book-thumb {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    transition: opacity .15s ease;
+
+    &:hover {
+      opacity: .8;
+    }
+  }
+
+  .book-navs {
+    display: flex;
+    margin-top: 1.5rem;
+  }
+
+  .book-nav svg {
+    width: 1.2rem;
+    height: 1.4rem;
+    stroke-width: 1.5;
+  }
+
+  .book-nav-next {
+    margin-left: auto;
+  }
+
+  @include media-breakpoint-down(md) {
+    .book-frame {
+      --book-top: 5rem;
+      padding-bottom: 1.5rem;
+    }
+
+    .book-close {
+      top: 1.5rem;
+
+      svg {
+        width: 2.25rem;
+        height: 2.25rem;
+      }
+    }
+
+    .book-body {
+      flex-direction: column;
+    }
+
+    .book-main,
+    .book-gallery {
+      flex: none;
+      width: 100%;
+    }
+
+    .book-main img {
+      margin-inline: auto;
+      max-height: 70vh;
+    }
+
+    .book-gallery {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .book-gallery-col {
+      display: contents;
     }
   }
 
@@ -283,6 +417,11 @@ $masonry-radius: 0;
 
     .book-caption { animation-delay: .1s; }
     .book-gallery img { animation-delay: calc(.08s + var(--i, 0) * .06s); }
+
+    // both photos of a gallery swap fade back in (class re-added by assets/front/masonry.js)
+    img.book-swap {
+      animation: book-swap-in .3s ease both;
+    }
   }
 }
 
@@ -291,7 +430,12 @@ $masonry-radius: 0;
   position: fixed;
   inset: 0;
   z-index: $zindex-modal - 1;
-  background: $body-bg;
+  background: $book-bg;
+}
+
+@keyframes book-swap-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes book-photo-in {
@@ -313,13 +457,15 @@ $masonry-radius: 0;
 
   .masonry-book-modal.show .book-main img,
   .masonry-book-modal.show .book-caption,
-  .masonry-book-modal.show .book-gallery img {
+  .masonry-book-modal.show .book-gallery img,
+  .masonry-book-modal.show img.book-swap {
     animation: none;
   }
 }
 
-$carousel-height: 120px;
-$carousel-gap: 1.5rem;
+// equal-height square boxes, so client logos keep their relative size (as in the design)
+$carousel-height: 111px;
+$carousel-gap: .15rem;
 
 .footer-carousel {
   overflow: hidden;
@@ -331,7 +477,6 @@ $carousel-gap: 1.5rem;
 }
 
 .footer-carousel-track {
-  opacity: .75;
   display: flex;
   align-items: center;
   gap: $carousel-gap;

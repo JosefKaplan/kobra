@@ -113,30 +113,46 @@
 	{var $heading = trim($componentContent['heading'] ?? '')}
 	{var $text = trim($componentContent['text'] ?? '')}
 	{var $gallery = array_filter(is_array($componentContent['gallery'] ?? null) ? $componentContent['gallery'] : [], fn ($g) => is_array($g) && trim($g['image_url'] ?? '') !== '')}
+	{* one narrow gallery column up to 3 photos, two beyond that (as in the design) *}
+	{var $galleryCols = count($gallery) > 3 ? 2 : 1}
 	{* full-page "book" view: no backdrop, prev/next arrows switch to the sibling tiles' modals (assets/front/masonry.js) *}
 	<div n:if="$mainImage !== ''" class="modal fade masonry-book-modal" id="masonry-item-{$component->getId()}" tabindex="-1" aria-hidden="true" data-bs-backdrop="false">
 		<div class="modal-dialog modal-fullscreen">
 			<div class="modal-content">
-				<button type="button" class="btn-close book-close" data-bs-dismiss="modal" aria-label="Zavřít"></button>
-				<button n:if="$prev !== $component" type="button" class="book-nav book-nav-prev" data-masonry-nav="#masonry-item-{$prev->getId()}" aria-label="Předchozí">
-					<i class="bi bi-chevron-left"></i>
-				</button>
-				<button n:if="$next !== $component" type="button" class="book-nav book-nav-next" data-masonry-nav="#masonry-item-{$next->getId()}" aria-label="Další">
-					<i class="bi bi-chevron-right"></i>
-				</button>
-				<div n:class="modal-body, row, g-3, count($gallery) ? 'book-with-gallery' : 'align-items-center'">
-					<div n:class="book-main, count($gallery) ? 'col-md-7' : 'col-12'">
-						<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
-						<div n:if="$heading !== '' || $text !== ''" class="book-caption mt-3">
-							<h3 n:if="$heading !== ''" class="h4">{$heading}</h3>
-							<p n:if="$text !== ''">{$text|breakLines}</p>
+				<div class="book-frame">
+					<button type="button" class="book-close" data-bs-dismiss="modal" aria-label="Zavřít">
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3 21 21M21 3 3 21"/></svg>
+					</button>
+					<div class="book-body" style="--gallery-cols: {$galleryCols}">
+						<div class="book-main">
+							<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+							<div n:if="$heading !== '' || $text !== ''" class="book-caption">
+								<h3 n:if="$heading !== ''" class="h5">{$heading}</h3>
+								<p n:if="$text !== ''">{$text|breakLines}</p>
+							</div>
+						</div>
+						<div n:if="count($gallery)" class="book-gallery">
+							{* photos are dealt left-to-right across the columns, so the admin order reads row by row *}
+							{for $col = 0; $col < $galleryCols; $col++}
+								<div class="book-gallery-col">
+									{foreach $gallery as $g}
+										{continueIf $iterator->counter0 % $galleryCols !== $col}
+										{* a click swaps the photo with the main one (assets/front/masonry.js); --i drives the staggered fade-in in _layout.scss *}
+										<button type="button" class="book-thumb" aria-label="Zobrazit ve velkém">
+											<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy" style="--i: {$iterator->counter0}">
+										</button>
+									{/foreach}
+								</div>
+							{/for}
 						</div>
 					</div>
-					<div n:if="count($gallery)" class="col-md-5 book-gallery">
-						{foreach $gallery as $g}
-							{* --i drives the staggered fade-in delay in _layout.scss *}
-							<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy" style="--i: {$iterator->counter0}">
-						{/foreach}
+					<div n:if="$prev !== $component" class="book-navs">
+						<button type="button" class="book-nav book-nav-prev" data-masonry-nav="#masonry-item-{$prev->getId()}" aria-label="Předchozí">
+							<svg viewBox="0 0 16 28" aria-hidden="true"><path d="M14 2 2 14l12 12"/></svg>
+						</button>
+						<button type="button" class="book-nav book-nav-next" data-masonry-nav="#masonry-item-{$next->getId()}" aria-label="Další">
+							<svg viewBox="0 0 16 28" aria-hidden="true"><path d="m2 2 12 12L2 26"/></svg>
+						</button>
 					</div>
 				</div>
 			</div>

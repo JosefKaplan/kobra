@@ -3,8 +3,8 @@
 // Neutrals
 $white: #fff !default;
 $black: #000 !default;
-$body-bg: #f5f5f6 !default;
-$body-color: #1f2937 !default;
+$body-bg: #fff !default;
+$body-color: #231f20 !default;
 $border-color: #dee2e6 !default;
 $shadow-color: #101828 !default;
 
@@ -41,8 +41,13 @@ $teal: #20c997 !default;
 $pink: #d63384 !default;
 
 // Front
+$canvas-bg: #f5f5f6; // gray panel behind the header + page content, and the tile detail view
 $site-header-link: #1d1d1b;
 $site-header-link-hover: #6f6f6f;
+$masonry-gap-color: #fff;
+$book-bg: $canvas-bg;
+$book-control: #a7a5a6;
+$book-control-hover: #231f20;
 
 $hero-accent: #4f46e5;
 $hero-bg-from: rgba($hero-accent, .1);

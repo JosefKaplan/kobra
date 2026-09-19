@@ -7,13 +7,6 @@ namespace App\Migrations;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * Adds the `uploads` table (App\Entity\Upload) — an audit trail of images uploaded through
- * App\Helpers\ImageUploader (drag & drop / click-to-browse widget behind hero.image_url,
- * image.url and a masonry_item's main_image_url / gallery image_url). Not a foreign key from those content fields —
- * they just hold the returned public URL as plain text; this table is a foundation for a future
- * media library (cleanup of orphaned files, a picker UI, …), nothing reads it yet.
- */
 final class Version20260904152113 extends AbstractMigration
 {
     public function getDescription(): string
