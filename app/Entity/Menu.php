@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Helpers\LinkList;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
@@ -64,5 +65,11 @@ class Menu
     {
         $this->content = $content;
         return $this;
+    }
+
+    /** @return list<array{label: string, url: string}> */
+    public function getLinks(): array
+    {
+        return LinkList::parse((string) ($this->content['links'] ?? ''));
     }
 }

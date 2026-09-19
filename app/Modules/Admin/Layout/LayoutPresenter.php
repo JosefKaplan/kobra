@@ -87,6 +87,7 @@ class LayoutPresenter extends BasePresenter
 		$this->template->block = null;
 		$this->template->type = $type;
 		$this->template->carousel = [];
+		$this->template->logo = '';
 		$this->setView('edit');
 	}
 
@@ -106,6 +107,7 @@ class LayoutPresenter extends BasePresenter
 				: ($content['text'] ?? ''),
 		];
 		if ($block->getType() === LayoutBlock::TYPE_NAV) {
+			$defaults['style'] = $block->getStyle();
 			$defaults['brand'] = $content['brand'] ?? '';
 			$defaults['menus'] = array_map(fn ($menu) => $menu->getId(), $block->getActiveMenus());
 		}
@@ -114,6 +116,7 @@ class LayoutPresenter extends BasePresenter
 		$this->template->block = $block;
 		$this->template->type = $block->getType();
 		$this->template->carousel = self::carouselItems($content['carousel'] ?? null);
+		$this->template->logo = (string) ($content['logo_url'] ?? '');
 	}
 
 	/**
@@ -148,9 +151,13 @@ class LayoutPresenter extends BasePresenter
 				->setHtmlAttribute('rows', 5)
 				->setHtmlAttribute('data-richtext');
 		} else {
+			$form->addSelect('style', 'Vzhled', [
+				LayoutBlock::STYLE_STUDIO => 'Logo s menu pod sebou',
+				LayoutBlock::STYLE_NAVBAR => 'Klasická lišta',
+			])->setDefaultValue(LayoutBlock::STYLE_STUDIO);
 			$form->addText('brand', 'Značka v navigaci')
 				->setHtmlAttribute('placeholder', 'Kobra')
-				->setOption('description', 'Text vlevo v navigaci (odkaz na úvod). Prázdné = „Kobra“.');
+				->setOption('description', 'Odkaz na úvod vlevo. S nahraným logem slouží jako jeho alternativní text, bez loga se zobrazí jako text. Prázdné = „Kobra“.');
 			$form->addTextArea('content', 'Odkazy')
 				->setHtmlAttribute('rows', 6)
 				->setHtmlAttribute('class', 'font-monospace')
@@ -188,7 +195,13 @@ class LayoutPresenter extends BasePresenter
 
 		$block->setName($data->name);
 		$block->setContent($block->getType() === LayoutBlock::TYPE_NAV
-			? ['brand' => trim($data->brand ?? ''), 'links' => $data->content]
+			? [
+				'style'    => $data->style,
+				'brand'    => trim($data->brand ?? ''),
+				// rendered by the shared imageUploadField widget, not a Nette control — read from the raw POST
+				'logo_url' => trim((string) $this->getHttpRequest()->getPost('logo_url')),
+				'links'    => $data->content,
+			]
 			: [
 				'text'     => $this->richTextSanitizer->sanitize($data->content),
 				// The carousel rows are plain inputs inside the same <form>, not Nette form controls

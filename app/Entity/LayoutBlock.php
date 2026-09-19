@@ -6,13 +6,14 @@ namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use App\Helpers\LinkList;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
  * A reusable navbar or footer, configured centrally in the admin (Admin:Layout)
  * and assigned to pages via Page::$navBlock / Page::$footerBlock dropdowns.
  *
- * Content keys by type: `nav` → ['brand' => string, 'links' => "Text | URL\n…"],
+ * Content keys by type: `nav` → ['style' => STYLE_*, 'brand' => string, 'logo_url' => string, 'links' => "Text | URL\n…"],
  * `footer` → ['text' => sanitized HTML, 'carousel' => [['image_url' => …, 'alt' => …, 'link_url' => …], …]]
  * (the carousel is an endless image marquee rendered above the text — see Front/@layout.latte).
  */
@@ -25,6 +26,11 @@ class LayoutBlock
     public const TYPE_NAV = 'nav';
     public const TYPE_FOOTER = 'footer';
     public const TYPES = [self::TYPE_NAV, self::TYPE_FOOTER];
+
+    /** Nav block look: classic Bootstrap navbar, or logo + small vertical link list ("studio"). */
+    public const STYLE_NAVBAR = 'navbar';
+    public const STYLE_STUDIO = 'studio';
+    public const STYLES = [self::STYLE_NAVBAR, self::STYLE_STUDIO];
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -95,6 +101,19 @@ class LayoutBlock
     {
         $this->content = $content;
         return $this;
+    }
+
+    /** Nav style; blocks saved before styles existed are classic navbars. */
+    public function getStyle(): string
+    {
+        $style = $this->content['style'] ?? null;
+        return in_array($style, self::STYLES, true) ? $style : self::STYLE_NAVBAR;
+    }
+
+    /** @return list<array{label: string, url: string}> */
+    public function getLinks(): array
+    {
+        return LinkList::parse((string) ($this->content['links'] ?? ''));
     }
 
     /**

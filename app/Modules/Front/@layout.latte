@@ -1,6 +1,6 @@
 {varType App\Entity\Page $page}
 {varType App\Helpers\FlashMessage[] $flashes}
-{varType App\Entity\LayoutBlock $navBlock}
+{varType ?App\Entity\LayoutBlock $navBlock}
 
 <!DOCTYPE html>
 <html lang="cs">
@@ -12,30 +12,49 @@
 </head>
 <body>
 
-	{* The navbar exists only when the displayed CMS page has a nav block assigned —
+	{* The header exists only when the displayed CMS page has a nav block assigned —
 	   there is no default menu and nothing hints at the admin section or login. *}
 	{var $navBlock = isset($page) ? $page->getNavBlock() : null}
-	<nav n:if="$navBlock !== null" class="navbar navbar-expand-md bg-white shadow-sm">
+	{var $navBrand = trim($navBlock?->getContent()['brand'] ?? '') ?: 'Kobra'}
+	{var $navLogo = trim($navBlock?->getContent()['logo_url'] ?? '')}
+	{var $navStudio = $navBlock?->getStyle() === App\Entity\LayoutBlock::STYLE_STUDIO}
+
+	{* "studio": logo + a small vertical link list, aligned with the wide masonry grid *}
+	<header n:if="$navStudio" class="site-header">
+		<div class="site-header-inner">
+			<a class="site-header-brand" n:href=":Front:Home:default">
+				{if $navLogo !== ''}<img src="{$navLogo}" alt="{$navBrand}">{else}{$navBrand}{/if}
+			</a>
+			<nav n:if="$navBlock->getLinks() || $navBlock->getActiveMenus()" class="site-header-menu" aria-label="Hlavní navigace">
+				<ul>
+					<li n:foreach="$navBlock->getLinks() as $link"><a href="{$link['url']}">{$link['label']}</a></li>
+					<li n:foreach="$navBlock->getActiveMenus() as $menu" class="dropdown">
+						{varType App\Entity\Menu $menu}
+						<a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">{$menu->getName()}</a>
+						<ul class="dropdown-menu">
+							<li n:foreach="$menu->getLinks() as $link"><a class="dropdown-item" href="{$link['url']}">{$link['label']}</a></li>
+						</ul>
+					</li>
+				</ul>
+			</nav>
+		</div>
+	</header>
+
+	<nav n:if="$navBlock !== null && !$navStudio" class="navbar navbar-expand-md bg-white shadow-sm">
 		<div class="container">
-			{var $navBrand = trim($navBlock->getContent()['brand'] ?? '')}
-			<a class="navbar-brand text-primary" n:href=":Front:Home:default">{$navBrand !== '' ? $navBrand : 'Kobra'}</a>
+			<a class="navbar-brand text-primary" n:href=":Front:Home:default">
+				{if $navLogo !== ''}<img src="{$navLogo}" alt="{$navBrand}" class="navbar-logo">{else}{$navBrand}{/if}
+			</a>
 			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
 			        aria-controls="mainNav" aria-expanded="false" aria-label="Přepnout navigaci">
 				<span class="navbar-toggler-icon"></span>
 			</button>
 			<div id="mainNav" class="collapse navbar-collapse">
 				<ul class="navbar-nav me-auto">
-					{* One "Text | URL" link per line *}
-					{foreach explode("\n", $navBlock->getContent()['links'] ?? '') as $navLine}
-						{var $navParts = explode('|', $navLine, 2)}
-						{var $navLabel = trim($navParts[0])}
-						{var $navUrl = trim($navParts[1] ?? '')}
-						{continueIf $navLabel === '' || $navUrl === ''}
-						<li class="nav-item">
-							<a class="nav-link" href="{$navUrl}">{$navLabel}</a>
-						</li>
-					{/foreach}
-					{* Assigned menus become dropdowns, labelled with the menu name — same "Text | URL" line format inside *}
+					<li n:foreach="$navBlock->getLinks() as $link" class="nav-item">
+						<a class="nav-link" href="{$link['url']}">{$link['label']}</a>
+					</li>
+					{* Assigned menus become dropdowns, labelled with the menu name *}
 					{foreach $navBlock->getActiveMenus() as $menu}
 						{varType App\Entity\Menu $menu}
 						<li class="nav-item dropdown">
@@ -43,13 +62,7 @@
 								{$menu->getName()}
 							</a>
 							<ul class="dropdown-menu">
-								{foreach explode("\n", $menu->getContent()['links'] ?? '') as $menuLine}
-									{var $menuParts = explode('|', $menuLine, 2)}
-									{var $menuLabel = trim($menuParts[0])}
-									{var $menuUrl = trim($menuParts[1] ?? '')}
-									{continueIf $menuLabel === '' || $menuUrl === ''}
-									<li><a class="dropdown-item" href="{$menuUrl}">{$menuLabel}</a></li>
-								{/foreach}
+								<li n:foreach="$menu->getLinks() as $link"><a class="dropdown-item" href="{$link['url']}">{$link['label']}</a></li>
 							</ul>
 						</li>
 					{/foreach}
@@ -58,7 +71,7 @@
 		</div>
 	</nav>
 
-	<main class="py-5">
+	<main n:class="$navStudio ? 'pt-0 pb-5' : 'py-5'">
 		<div class="container">
 			{foreach $flashes as $flash}
 				{varType App\Helpers\FlashMessage $flash}

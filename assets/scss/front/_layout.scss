@@ -12,9 +12,78 @@ main {
   flex: 1;
 }
 
+// Masonry grid and studio header share this width, so their left edges line up.
+$wide-max-width: 1290px;
+
 .navbar-brand {
   font-weight: 700;
   letter-spacing: -.01em;
+}
+
+.navbar-logo {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.site-header {
+  padding: 4.5rem 0 1rem;
+}
+
+.site-header-inner {
+  width: min(#{$wide-max-width}, 100vw - 3rem);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 4.5rem;
+}
+
+.site-header-brand {
+  flex-shrink: 0;
+  color: $site-header-link;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+
+  img {
+    display: block;
+    height: 58px;
+    width: auto;
+  }
+}
+
+.site-header-menu > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: .9375rem;
+  font-weight: 500;
+  line-height: 1.25;
+
+  > li > a {
+    color: $site-header-link;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: $site-header-link-hover;
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .site-header {
+    padding-top: 2rem;
+  }
+
+  .site-header-inner {
+    gap: 2rem;
+  }
+
+  .site-header-brand img {
+    height: 44px;
+  }
 }
 
 .auth-wrap {
@@ -77,11 +146,10 @@ main {
 
 $masonry-gap: .4rem;
 $masonry-radius: 0;
-$masonry-max-width: 1290px;
 
 .page-masonry {
-  width: min(#{$masonry-max-width}, 100vw - 3rem);
-  margin-left: calc(50% - min(#{$masonry-max-width}, 100vw - 3rem) / 2);
+  width: min(#{$wide-max-width}, 100vw - 3rem);
+  margin-left: calc(50% - min(#{$wide-max-width}, 100vw - 3rem) / 2);
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(max(180px, calc((100% - 4 * #{$masonry-gap}) / 5)), 1fr));
   gap: $masonry-gap;
