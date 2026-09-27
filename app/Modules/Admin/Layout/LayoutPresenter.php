@@ -60,14 +60,14 @@ class LayoutPresenter extends BasePresenter
 		$grid->addAction('delete', 'Smazat', 'delete!')
 			->setIcon('trash')
 			->setClass('btn btn-xs btn-outline-danger ajax')
-			->setConfirmation(new StringConfirmation('Opravdu smazat? Stránky, které tento blok používají, jej přestanou zobrazovat.'));
+			->setConfirmation(new StringConfirmation('Opravdu smazat natrvalo, včetně obrázků karuselu a loga? Stránky, které tento blok používají, jej přestanou zobrazovat. Nelze vrátit.'));
 
 		return $grid;
 	}
 
 	public function handleDelete(int $id): void
 	{
-		$this->layoutBlockManager->delete($id, $this->getUserEntity());
+		$this->layoutBlockManager->delete($id);
 		$this->flashMessage('Blok smazán.', 'success');
 
 		if ($this->isAjax()) {
@@ -86,6 +86,8 @@ class LayoutPresenter extends BasePresenter
 
 		$this->template->block = null;
 		$this->template->type = $type;
+		$this->template->carousel = [];
+		$this->template->logo = '';
 		$this->setView('edit');
 	}
 
@@ -105,13 +107,35 @@ class LayoutPresenter extends BasePresenter
 				: ($content['text'] ?? ''),
 		];
 		if ($block->getType() === LayoutBlock::TYPE_NAV) {
+			$defaults['style'] = $block->getStyle();
 			$defaults['brand'] = $content['brand'] ?? '';
-			$defaults['menus'] = array_map(fn ($menu) => $menu->getId(), $block->getActiveMenus());
+			$defaults['menus'] = array_map(fn ($menu) => $menu->getId(), $block->getMenus());
 		}
 		$this['blockForm']->setDefaults($defaults);
 
 		$this->template->block = $block;
 		$this->template->type = $block->getType();
+		$this->template->carousel = self::carouselItems($content['carousel'] ?? null);
+		$this->template->logo = (string) ($content['logo_url'] ?? '');
+	}
+
+	/**
+	 * Normalizes footer carousel rows — from stored content or from the raw POST
+	 * (`carousel[<index>][image_url|alt|link_url]`, see edit.latte / masonry.js): keeps the
+	 * body order, drops rows without an image, re-indexes.
+	 *
+	 * @return list<array{image_url: string, alt: string, link_url: string}>
+	 */
+	private static function carouselItems(mixed $rows): array
+	{
+		return array_values(array_filter(array_map(
+			fn ($row) => [
+				'image_url' => trim((string) (is_array($row) ? ($row['image_url'] ?? '') : '')),
+				'alt'       => trim((string) (is_array($row) ? ($row['alt'] ?? '') : '')),
+				'link_url'  => trim((string) (is_array($row) ? ($row['link_url'] ?? '') : '')),
+			],
+			is_array($rows) ? $rows : [],
+		), fn (array $row) => $row['image_url'] !== ''));
 	}
 
 	protected function createComponentBlockForm(): Form
@@ -127,9 +151,13 @@ class LayoutPresenter extends BasePresenter
 				->setHtmlAttribute('rows', 5)
 				->setHtmlAttribute('data-richtext');
 		} else {
+			$form->addSelect('style', 'Vzhled', [
+				LayoutBlock::STYLE_STUDIO => 'Logo s menu pod sebou',
+				LayoutBlock::STYLE_NAVBAR => 'Klasická lišta',
+			])->setDefaultValue(LayoutBlock::STYLE_STUDIO);
 			$form->addText('brand', 'Značka v navigaci')
 				->setHtmlAttribute('placeholder', 'Kobra')
-				->setOption('description', 'Text vlevo v navigaci (odkaz na úvod). Prázdné = „Kobra“.');
+				->setOption('description', 'Odkaz na úvod vlevo. S nahraným logem slouží jako jeho alternativní text, bez loga se zobrazí jako text. Prázdné = „Kobra“.');
 			$form->addTextArea('content', 'Odkazy')
 				->setHtmlAttribute('rows', 6)
 				->setHtmlAttribute('class', 'font-monospace')
@@ -167,8 +195,19 @@ class LayoutPresenter extends BasePresenter
 
 		$block->setName($data->name);
 		$block->setContent($block->getType() === LayoutBlock::TYPE_NAV
-			? ['brand' => trim($data->brand ?? ''), 'links' => $data->content]
-			: ['text' => $this->richTextSanitizer->sanitize($data->content)]);
+			? [
+				'style'    => $data->style,
+				'brand'    => trim($data->brand ?? ''),
+				// rendered by the shared imageUploadField widget, not a Nette control — read from the raw POST
+				'logo_url' => trim((string) $this->getHttpRequest()->getPost('logo_url')),
+				'links'    => $data->content,
+			]
+			: [
+				'text'     => $this->richTextSanitizer->sanitize($data->content),
+				// The carousel rows are plain inputs inside the same <form>, not Nette form controls
+				// (dynamic list: add/remove/reorder client-side), so they're read from the raw POST.
+				'carousel' => self::carouselItems($this->getHttpRequest()->getPost('carousel')),
+			]);
 		if ($block->getType() === LayoutBlock::TYPE_NAV) {
 			$block->setMenus($this->menuManager->getByIds($data->menus ?? []));
 		}

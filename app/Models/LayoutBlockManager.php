@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Entity\LayoutBlock;
-use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 
@@ -20,13 +19,12 @@ class LayoutBlockManager
 	{
 		return $this->em->createQueryBuilder()
 			->select('b')
-			->from(LayoutBlock::class, 'b')
-			->where('b.deletedDate IS NULL');
+			->from(LayoutBlock::class, 'b');
 	}
 
 	public function getById(int $id): ?LayoutBlock
 	{
-		return $this->em->getRepository(LayoutBlock::class)->findOneBy(['id' => $id, 'deletedDate' => null]);
+		return $this->em->getRepository(LayoutBlock::class)->find($id);
 	}
 
 	/**
@@ -37,7 +35,7 @@ class LayoutBlockManager
 	public function getSelectItems(string $type): array
 	{
 		$blocks = $this->em->getRepository(LayoutBlock::class)
-			->findBy(['type' => $type, 'deletedDate' => null], ['name' => 'ASC']);
+			->findBy(['type' => $type], ['name' => 'ASC']);
 
 		$items = [];
 		foreach ($blocks as $block) {
@@ -53,12 +51,12 @@ class LayoutBlockManager
 		$this->em->flush();
 	}
 
-	/** Soft delete — pages referencing the block just stop showing it (Page::getNavBlock/getFooterBlock filter). */
-	public function delete(int $id, ?User $deletedBy = null): void
+	/** Hard delete — pages using the block lose it (FK ON DELETE SET NULL), its images go via UploadCleanupListener. */
+	public function delete(int $id): void
 	{
 		$block = $this->getById($id);
 		if ($block) {
-			$block->markDeleted($deletedBy);
+			$this->em->remove($block);
 			$this->em->flush();
 		}
 	}

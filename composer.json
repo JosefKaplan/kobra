@@ -40,7 +40,7 @@
 		}
 	},
 	"scripts": {
-		"phpstan": "phpstan analyse",
+		"phpstan": "phpstan analyse --memory-limit=512M",
 		"tester": "tester tests -s"
 	},
 	"minimum-stability": "stable",

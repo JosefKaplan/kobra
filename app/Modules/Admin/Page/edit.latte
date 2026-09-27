@@ -52,44 +52,56 @@
 					<li><h6 class="dropdown-header small text-muted">Vyberte typ bloku</h6></li>
 					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'hero'">
-							<i class="bi bi-image me-2 text-primary"></i>Hero sekce
+							<i class="bi bi-image me-2 text-type-hero"></i>Hero sekce
 							<small class="d-block text-muted ms-4">Nadpis, podnadpis, tlačítko</small>
 						</a>
 					</li>
 					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'heading'">
-							<i class="bi bi-type-h2 me-2 text-info"></i>Nadpis
+							<i class="bi bi-type-h2 me-2 text-type-heading"></i>Nadpis
 							<small class="d-block text-muted ms-4">Samostatný nadpis s úrovní a zarovnáním</small>
 						</a>
 					</li>
 					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'text_block'">
-							<i class="bi bi-text-paragraph me-2 text-secondary"></i>Textový blok
+							<i class="bi bi-text-paragraph me-2 text-type-text_block"></i>Textový blok
 							<small class="d-block text-muted ms-4">Odstavec nebo delší text</small>
 						</a>
 					</li>
 					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'image'">
-							<i class="bi bi-card-image me-2 text-orange"></i>Obrázek
+							<i class="bi bi-card-image me-2 text-type-image"></i>Obrázek
 							<small class="d-block text-muted ms-4">Obrázek z URL adresy, s popiskem</small>
 						</a>
 					</li>
 					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'masonry'">
+							<i class="bi bi-grid-3x3-gap-fill me-2 text-type-masonry"></i>Masonry
+							<small class="d-block text-muted ms-4">Mřížka čtvercových dlaždic — každá je samostatný blok s detailem (nadpis, text, galerie)</small>
+						</a>
+					</li>
+					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'columns'">
-							<i class="bi bi-layout-three-columns me-2 text-purple"></i>Sloupce
+							<i class="bi bi-layout-three-columns me-2 text-type-columns"></i>Sloupce
 							<small class="d-block text-muted ms-4">Řada sloupců — každý sloupec je samostatný blok</small>
 						</a>
 					</li>
 					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'cta'">
-							<i class="bi bi-megaphone me-2 text-success"></i>CTA blok
+							<i class="bi bi-megaphone me-2 text-type-cta"></i>CTA blok
 							<small class="d-block text-muted ms-4">Výzva k akci s tlačítkem</small>
 						</a>
 					</li>
 					<li>
 						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'contact_form'">
-							<i class="bi bi-envelope-paper me-2 text-teal"></i>Kontaktní formulář
+							<i class="bi bi-envelope-paper me-2 text-type-contact_form"></i>Kontaktní formulář
 							<small class="d-block text-muted ms-4">E-mail a zpráva odeslané na externí adresu</small>
+						</a>
+					</li>
+					<li>
+						<a class="dropdown-item" n:href="addComponent! pageId => $page->getId(), type => 'contact_info'">
+							<i class="bi bi-person-lines-fill me-2 text-type-contact_info"></i>Kontaktní údaje
+							<small class="d-block text-muted ms-4">E-mail, telefon, adresy s mapou, fakturační údaje a sociální sítě</small>
 						</a>
 					</li>
 				</ul>

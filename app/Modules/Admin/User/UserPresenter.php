@@ -85,7 +85,7 @@ class UserPresenter extends BasePresenter
 			$grid->addAction('delete', 'Smazat', 'delete!')
 				->setIcon('trash')
 				->setClass('btn btn-xs btn-outline-danger ajax')
-				->setConfirmation(new StringConfirmation('Opravdu smazat tohoto uživatele?'))
+				->setConfirmation(new StringConfirmation('Opravdu smazat tohoto uživatele natrvalo? Nelze vrátit.'))
 				->setRenderCondition(function ($item) {
 					$itemId = $item instanceof User ? $item->getId() : $item['id'];
 					return $this->getUser()->isInRole('admin') && $this->getUser()->getId() !== $itemId;

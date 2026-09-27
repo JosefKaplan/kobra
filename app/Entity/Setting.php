@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 /**
  * Key–value application settings (the same idea as WordPress' wp_options table).
@@ -16,7 +17,7 @@ class Setting
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 64, unique: true)]
     private string $name;
@@ -26,7 +27,7 @@ class Setting
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Setting has no ID until it is persisted.');
     }
 
     public function getName(): string

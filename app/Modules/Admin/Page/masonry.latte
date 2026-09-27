@@ -1,0 +1,58 @@
+{layout '../@layout.latte'}
+{import '_componentEditor.latte'}
+{varType App\Entity\PageComponent $component}
+{varType App\Entity\Page $page}
+
+{block title}Masonry – {$page->getTitle()}{/block}
+
+{block content}
+<div class="d-flex align-items-start justify-content-between mb-4">
+	<div>
+		<a href="{link edit, id => $page->getId()}#component-{$component->getId()}" class="btn btn-outline-secondary btn-sm mb-2">
+			<i class="bi bi-arrow-left me-1"></i>Zpět na stránku
+		</a>
+		<h1 class="h3 mb-0">
+			<i class="bi bi-grid-3x3-gap-fill me-2 text-type-masonry"></i>Masonry
+			<span class="text-muted fw-normal">– {$page->getTitle()}</span>
+		</h1>
+	</div>
+	<a n:href="addComponent! pageId => $page->getId(), type => 'masonry_item', parentId => $component->getId()" class="btn btn-success btn-sm">
+		<i class="bi bi-plus-lg me-1"></i>Přidat dlaždici
+	</a>
+</div>
+
+<p class="text-muted">
+	Každá dlaždice je samostatný blok: hlavní fotka se zobrazí v mřížce, po rozkliknutí se otevře detail
+	s nadpisem, textem a dalšími fotkami z galerie. Nové dlaždice se přidávají na začátek mřížky, pořadí
+	změníte šipkami <i class="bi bi-arrow-up"></i>/<i class="bi bi-arrow-down"></i>.
+</p>
+
+{* Bulk creation: every dropped file is uploaded through the shared uploadImage! endpoint one at a
+   time, then the URLs are posted to createMasonryItems! which adds one tile per URL at the top (masonry.js). *}
+<div class="mb-4" data-masonry-bulk-create data-upload-endpoint="{link uploadImage!}"
+     data-create-endpoint="{link createMasonryItems! parentId => $component->getId()}">
+	<div class="image-upload-dropzone border rounded-3 p-3 d-flex align-items-center gap-2 text-muted" data-dropzone>
+		<i class="bi bi-images fs-4"></i>
+		<span>Přetáhněte sem více obrázků najednou nebo <span class="text-primary text-decoration-underline" data-browse>vyberte soubory</span> – ke každému vznikne na začátku mřížky nová dlaždice s touto hlavní fotkou.</span>
+		<input type="file" class="visually-hidden" accept="image/jpeg,image/png,image/gif,image/webp" multiple aria-label="Vybrat obrázky" data-input>
+	</div>
+	<div class="small text-danger mt-1" data-error hidden></div>
+</div>
+
+{foreach $component->getOrderedChildren() as $child}
+	<div id="component-{$child->getId()}" class="card shadow-sm mb-3 component-card" data-type="{$child->getType()}">
+		<div class="card-header d-flex align-items-center justify-content-between py-2">
+			{include componentHeader, component: $child, first: $iterator->first, last: $iterator->last, counter: $iterator->counter}
+		</div>
+		<div class="card-body">
+			{include componentForm, component: $child}
+		</div>
+	</div>
+{/foreach}
+
+<div n:if="!count($component->getOrderedChildren())" class="text-center py-5 text-muted border rounded-3 bg-light">
+	<i class="bi bi-grid-3x3-gap-fill fs-1 d-block mb-2 opacity-25"></i>
+	<p class="mb-0">Zatím žádné dlaždice.</p>
+	<p class="small">Přetáhněte obrázky do pole výše, nebo přidejte prázdnou dlaždici tlačítkem <strong>Přidat dlaždici</strong>.</p>
+</div>
+{/block}

@@ -13,7 +13,7 @@ Stav k červenci 2026 — ceny a verze PHP u hostingů si před rozhodnutím ov�
 | MariaDB 10.6+ | databáze `kobra` (název lze změnit v configu); doporučeno 10.11 LTS | používá `pdo_mysql` a `mysql:` DSN – MariaDB mluví MySQL protokolem. Nastav `parameters.database.serverVersion` na reálnou verzi (`SELECT VERSION()`), např. `10.11.11-MariaDB` – suffix `-MariaDB` přepne Doctrine na MariaDBPlatform. MySQL 8 funguje taky (`serverVersion: '8.0'`). |
 | Apache + mod_rewrite | `www/.htaccess` už je připravený (front controller pattern) | nginx jde taky, ale vyžaduje vlastní konfiguraci |
 | Document root → `www/` | **jediný záludný bod na sdíleném hostingu** — viz krok 5.4 | kód aplikace (`app/`, `config/`, `vendor/`…) nesmí být veřejně dostupný |
-| Zapisovatelné `temp/` a `log/` | DI kontejner, cache Latte, Tracy logy, sessions | `chmod 777` (sdílený hosting) nebo `www-data` vlastník (VPS). `temp/sessions/` je v repu (`.gitkeep`) – Nette ji sama nezaloží, bez zápisu do ní shodí "Failed to read session data" |
+| Zapisovatelné `temp/`, `log/` a `www/uploads/` | DI kontejner, cache Latte, Tracy logy, sessions, nahrané obrázky | `chmod 777` (sdílený hosting) nebo `www-data` vlastník (VPS). `temp/sessions/` i `www/uploads/` jsou v repu jen jako `.gitkeep` – Nette/git je samy nezaloží; bez zápisu do `temp/sessions/` shodí "Failed to read session data", bez zápisu do `www/uploads/` selže každý upload |
 | Composer **lokálně** | `vendor/` (~44 MB) se buildí na tvém stroji a nahrává se | na serveru Composer potřeba není |
 | Node.js **lokálně** | `npm run build` → `www/assets/` se nahrává hotové | na serveru Node potřeba není — Vite je jen build tool |
 | CLI přístup k DB | migrace: `php bin/console migrations:migrate` | jde spustit i lokálně proti vzdálené DB (viz 5.5) — SSH není nutné |
@@ -175,6 +175,10 @@ php bin/console migrations:migrate --no-interaction
 
 Migrace zároveň naseeduje výchozí účet `admin`/`Admin123`.
 
+**Před migrací na produkci vždy zálohuj DB** (export přes phpMyAdmin / `mysqldump`) — migrace
+`Version20260927141706` natrvalo odstraní dříve „smazané" (soft-deleted) řádky. Jejich obrázky
+na serveru pak smaže admin při první návštěvě (migrace běží z lokálu, na soubory serveru nedosáhne).
+
 Pokud hosting vzdálený přístup k DB nemá: exportuj lokální schéma (`mysqldump kobra > dump.sql` z čerstvě zmigrované lokální DB; `mysqldump` funguje i pro MariaDB) a naimportuj přes phpMyAdmin hostingu.
 
 ### 5.6 Ověření a zabezpečení — hned po nasazení
@@ -214,14 +218,25 @@ Zásady:
 
 ## 7. Obrázky (IMGs)
 
-Aktuálně CMS **žádné nahrávání obrázků nemá** — jediné obrazové assety jsou ve `www/` (favicon) a v buildovaných assets. Není co řešit.
+CMS umí nahrávání obrázků (drag & drop / výběr souboru u `hero`, `image` a `masonry` bloků,
+`App\Helpers\ImageUploader`). Co to znamená pro nasazení:
 
-Až se upload přidá, dopředu počítej s tímhle:
-
-- uploady patří do `www/uploads/` (veřejné, mimo git — přidat do `.gitignore`), **ne** do `www/assets/` (to maže/přepisuje Vite build)
-- uploady jsou pak jediná data mimo DB → zálohovat spolu s dumpem DB
-- na sdíleném hostingu hlídat diskovou kvótu (Porkbun Starter: 10 GB)
-- validovat typ souboru serverově (přípona + MIME), generovat vlastní názvy souborů (webalize + hash), nikdy nepoužít originální název od uživatele
+- Uploady se ukládají do `www/uploads/` (veřejné, mimo git — `.gitignore` drží obsah venku, jen
+  `.gitkeep` a `.htaccess` jsou trackované, stejně jako `temp/sessions/`). **Nikdy** ne do
+  `www/assets/` — to maže/přepisuje Vite build.
+- `www/uploads/` musí po nasazení existovat a být zapisovatelná (viz krok 5, `chmod`) — Nette ji
+  sama nezaloží.
+- Validace (typ podle skutečného obsahu souboru, ne přípony/MIME od klienta; max. 8 MB —
+  `ImageUploader::MAX_SIZE`) běží server-side, ale **`php.ini` limity musí ten limit dovolit**:
+  `upload_max_filesize` a `post_max_size` ≥ 8 MB. Na sdíleném hostingu bývá výchozí strop nižší
+  (2–8 MB) a admin nemusí mít možnost ho zvednout — ověř to před spuštěním do provozu.
+- Uploady jsou jediná binární data mimo DB → zálohovat spolu s dumpem DB (samotná DB tabulka
+  `uploads` drží jen metadata/audit záznam, ne obsah souboru).
+- Na sdíleném hostingu hlídat diskovou kvótu (Porkbun Starter: 10 GB).
+- Mazání je všude natvrdo: se smazanou komponentou, stránkou, patičkou či navigací zmizí i její
+  obrázky (soubor v `www/uploads/` i řádek v `uploads`), jakmile na ně nic jiného neodkazuje.
+  Obrázky nahrané, ale nikdy neuložené do obsahu, uklidí admin sám jednou denně (starší než 24 h)
+  — cron k tomu potřeba není. Smazané nejde vrátit, proto zálohuj DB i `www/uploads/`.
 
 ---
 

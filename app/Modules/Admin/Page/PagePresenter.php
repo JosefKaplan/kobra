@@ -22,11 +22,35 @@ use Nette\Utils\Strings;
 
 class PagePresenter extends BasePresenter
 {
-	/** Types allowed inside a `columns` container (no nested containers, no layout components). */
-	private const CHILD_COMPONENT_TYPES = ['heading', 'text_block', 'cta', 'image'];
+	/**
+	 * Container component types and what they may hold: the child types allowed under each
+	 * (never another container), and the maximum number of active children (null = unlimited).
+	 * A type listed as a child of exactly one container (masonry_item) can only ever be created
+	 * under that container — it's not offered at page level and rejected anywhere else.
+	 */
+	private const CONTAINER_TYPES = [
+		// More columns than this stop being columns on any screen.
+		'columns' => ['children' => ['heading', 'text_block', 'cta', 'image'], 'max' => 4],
+		'masonry' => ['children' => ['masonry_item'], 'max' => null],
+	];
 
-	/** More columns than this stop being columns on any screen. */
-	private const MAX_COLUMNS = 4;
+	/** Child types that exist only inside their container (see CONTAINER_TYPES) — no page-level counterpart. */
+	private const CHILD_ONLY_TYPES = ['masonry_item'];
+
+	/** Content keys of the `contact_info` component — every one a plain-text field of its editor form. */
+	private const CONTACT_INFO_KEYS = [
+		'heading', 'intro', 'email', 'phone', 'studio_address', 'billing_address',
+		'company', 'ico', 'dic', 'register', 'social', 'links',
+	];
+
+	/**
+	 * Containers whose dedicated screen has a bulk "one child per dropped image" dropzone
+	 * (handleCreateMasonryItems): the child type to create and which of its content keys
+	 * receives the uploaded URL.
+	 */
+	private const BULK_IMAGE_CHILDREN = [
+		'masonry' => ['child' => 'masonry_item', 'urlKey' => 'main_image_url', 'one' => 'Dlaždice přidána.', 'many' => 'Přidáno dlaždic: %d.'],
+	];
 
 	#[Inject]
 	public PageManager $pageManager;
@@ -93,7 +117,7 @@ class PagePresenter extends BasePresenter
 		$grid->addAction('delete', 'Smazat', 'delete!')
 			->setIcon('trash')
 			->setClass('btn btn-xs btn-outline-danger ajax')
-			->setConfirmation(new StringConfirmation('Opravdu smazat tuto stránku včetně všech komponent?'));
+			->setConfirmation(new StringConfirmation('Opravdu smazat tuto stránku natrvalo, včetně všech bloků a jejich obrázků? Nelze vrátit.'));
 		$grid->addToolbarButton('add', 'Nová stránka')
 			->setIcon('plus')
 			->setClass('btn btn-primary');
@@ -108,7 +132,7 @@ class PagePresenter extends BasePresenter
 			$this->settingsManager->set(SettingsManager::HOMEPAGE_PAGE_ID, null);
 		}
 
-		$this->pageManager->delete($id, $this->getUserEntity());
+		$this->pageManager->delete($id);
 		$this->flashMessage('Stránka smazána.', 'success');
 
 		if ($this->isAjax()) {
@@ -178,8 +202,19 @@ class PagePresenter extends BasePresenter
 	/** Dedicated editing screen of one `columns` container — its columns are its child components. */
 	public function actionColumns(int $id): void
 	{
+		$this->setupContainerScreen($id, 'columns');
+	}
+
+	/** Dedicated editing screen of one `masonry` container — its tiles are `masonry_item` child components. */
+	public function actionMasonry(int $id): void
+	{
+		$this->setupContainerScreen($id, 'masonry');
+	}
+
+	private function setupContainerScreen(int $id, string $type): void
+	{
 		$component = $this->pageManager->getComponentById($id);
-		if (!$component || $component->getType() !== 'columns') {
+		if (!$component || $component->getType() !== $type) {
 			$this->error('Komponenta nenalezena.');
 		}
 
@@ -262,32 +297,115 @@ class PagePresenter extends BasePresenter
 		$parent = null;
 		if ($parentId !== null) {
 			$parent = $this->pageManager->getComponentById($parentId);
-			if (!$parent || $parent->getPage()->getId() !== $pageId || $parent->getType() !== 'columns') {
+			if (!$parent || $parent->getPage()->getId() !== $pageId || !isset(self::CONTAINER_TYPES[$parent->getType()])) {
 				$this->error('Neplatná nadřazená komponenta.');
 			}
-			if (!in_array($type, self::CHILD_COMPONENT_TYPES, true)) {
-				$this->error('Tento typ bloku nelze vložit jako sloupec.', IResponse::S400_BadRequest);
+			$container = self::CONTAINER_TYPES[$parent->getType()];
+			if (!in_array($type, $container['children'], true)) {
+				$this->error('Tento typ bloku nelze vložit do této komponenty.', IResponse::S400_BadRequest);
 			}
-			if (count($parent->getActiveChildren()) >= self::MAX_COLUMNS) {
-				$this->flashMessage('Komponenta může mít nejvýše ' . self::MAX_COLUMNS . ' sloupce.', 'warning');
+			if ($container['max'] !== null && count($parent->getOrderedChildren()) >= $container['max']) {
+				$this->flashMessage('Komponenta může mít nejvýše ' . $container['max'] . ' vnořené bloky.', 'warning');
 				$this->redirect('this');
 			}
+		} elseif ($this->isChildOnlyType($type)) {
+			$this->error('Tento typ bloku lze vložit jen do nadřazené komponenty.', IResponse::S400_BadRequest);
 		}
 
-		$defaultContent = match($type) {
+		$this->persistNewComponent($page, $parent, $type, self::defaultContent($type));
+
+		$this->flashMessage('Komponenta přidána.', 'success');
+		$this->redirect('this');
+	}
+
+	/**
+	 * Bulk creation of `masonry_item` tiles behind the masonry screen's dropzone: the browser
+	 * uploads the picked files one at a time through uploadImage! (same single-file endpoint as
+	 * every other image widget, so PHP's request-wide post_max_size/max_file_uploads never
+	 * apply) and then POSTs the resulting URLs here — one new tile per URL, added at the top
+	 * of the grid in upload order.
+	 */
+	public function handleCreateMasonryItems(int $parentId): void
+	{
+		$this->createChildrenFromUploads($parentId, 'masonry');
+	}
+
+	private function createChildrenFromUploads(int $parentId, string $parentType): void
+	{
+		$this->checkSameSiteRequest();
+		$bulk = self::BULK_IMAGE_CHILDREN[$parentType];
+
+		$parent = $this->pageManager->getComponentById($parentId);
+		if (!$parent || $parent->getType() !== $parentType) {
+			$this->error('Komponenta nenalezena.');
+		}
+
+		$post = $this->getHttpRequest()->getPost();
+		$urls = array_values(array_filter(array_map(
+			fn ($url) => trim((string) $url),
+			is_array($post['urls'] ?? null) ? $post['urls'] : [],
+		), fn (string $url) => $url !== ''));
+
+		// newest-first container: created back to front, so the batch reads in upload order at the top
+		foreach ($parent->isNewestFirst() ? array_reverse($urls) : $urls as $url) {
+			$content = self::defaultContent($bulk['child']);
+			$content[$bulk['urlKey']] = $url;
+			// One flush for the whole batch (below): all-or-nothing, and no per-child changeset pass
+			$this->persistNewComponent($parent->getPage(), $parent, $bulk['child'], $content, flush: false);
+		}
+		if ($urls !== []) {
+			$this->pageManager->save($parent->getPage());
+			$this->flashMessage(count($urls) === 1 ? $bulk['one'] : sprintf($bulk['many'], count($urls)), 'success');
+		}
+		// Files the browser couldn't upload (wrong type, too big, server error) — re-shown here because
+		// the redirect below would otherwise replace the page the dropzone reported them on.
+		$failed = array_values(array_filter(array_map(
+			fn ($message) => Strings::truncate(trim((string) $message), 200),
+			is_array($post['failed'] ?? null) ? array_slice($post['failed'], 0, 20) : [],
+		), fn (string $message) => $message !== ''));
+		if ($failed !== []) {
+			$this->flashMessage('Nepodařilo se nahrát: ' . implode(' · ', $failed), 'warning');
+		}
+		$this->redirect('this');
+	}
+
+	/** A type allowed only as a child of some container — never offered or accepted at page level. */
+	private function isChildOnlyType(string $type): bool
+	{
+		return in_array($type, self::CHILD_ONLY_TYPES, true);
+	}
+
+	/** @return array<string, mixed> */
+	private static function defaultContent(string $type): array
+	{
+		return match($type) {
 			'hero'          => ['heading' => '', 'subheading' => '', 'button_text' => '', 'button_url' => '', 'image_url' => ''],
 			'heading'       => ['text' => '', 'level' => 'h2', 'align' => 'start'],
 			'text_block'    => ['content' => ''],
 			'image'         => ['url' => '', 'alt' => '', 'caption' => ''],
 			'columns'       => [],
+			'masonry'       => [],
+			'masonry_item'  => ['main_image_url' => '', 'main_image_alt' => '', 'heading' => '', 'text' => '', 'gallery' => []],
 			'cta'           => ['heading' => '', 'body' => '', 'button_text' => '', 'button_url' => '', 'button_style' => 'primary'],
 			'contact_form'  => ['heading' => '', 'action_url' => '', 'button_text' => 'Odeslat', 'email_placeholder' => 'Váš e-mail…', 'message_placeholder' => 'Vaše zpráva…'],
+			'contact_info'  => array_fill_keys(self::CONTACT_INFO_KEYS, ''),
 			default         => [],
 		};
+	}
 
-		// max+1 within the sibling group (children of the same parent, or page roots);
-		// count() could duplicate an existing order after deletions
-		$siblings = $parent !== null ? $parent->getActiveChildren() : $page->getRootComponents();
+	/**
+	 * Builds and attaches one new component with the highest sort order of its sibling group
+	 * (children of $parent, or the page's roots) — the end of the list, or its top in a newest-first
+	 * container — and, unless $flush is false, saves the page. With $flush false the
+	 * caller saves once for a whole batch — the sibling scan still sees the earlier additions,
+	 * since addChild()/addComponent() update the in-memory collections immediately.
+	 *
+	 * @param array<string, mixed> $content
+	 */
+	private function persistNewComponent(Page $page, ?PageComponent $parent, string $type, array $content, bool $flush = true): PageComponent
+	{
+		// max+1 within the sibling group; count() could duplicate an existing order after deletions
+		$siblings = $parent !== null ? $parent->getOrderedChildren() : $page->getRootComponents();
 		$maxSortOrder = -1;
 		foreach ($siblings as $existing) {
 			$maxSortOrder = max($maxSortOrder, $existing->getSortOrder());
@@ -296,7 +414,7 @@ class PagePresenter extends BasePresenter
 		$component = new PageComponent();
 		$component->setPage($page);
 		$component->setType($type);
-		$component->setContent($defaultContent);
+		$component->setContent($content);
 		$component->setSortOrder($maxSortOrder + 1);
 		// 'sm' is the explicit default spacing shown pre-selected in the editor — new components start with it
 		// rather than the ambiguous "use whatever the type happens to hardcode" null previously defaulted to.
@@ -308,10 +426,11 @@ class PagePresenter extends BasePresenter
 		}
 
 		$page->addComponent($component);
-		$this->pageManager->save($page);
+		if ($flush) {
+			$this->pageManager->save($page);
+		}
 
-		$this->flashMessage('Komponenta přidána.', 'success');
-		$this->redirect('this');
+		return $component;
 	}
 
 	public function handleSaveComponent(int $componentId): void
@@ -348,6 +467,23 @@ class PagePresenter extends BasePresenter
 				'caption' => $post['caption'] ?? '',
 			],
 			'columns' => [],
+			'masonry' => [],
+			'masonry_item' => [
+				'main_image_url' => trim((string) ($post['main_image_url'] ?? '')),
+				'main_image_alt' => trim((string) ($post['main_image_alt'] ?? '')),
+				'heading'        => trim((string) ($post['heading'] ?? '')),
+				'text'           => $this->richTextSanitizer->sanitize((string) ($post['text'] ?? '')),
+				// Gallery rows arrive as gallery[<index>][image_url|alt] (see masonry.js); indices may
+				// have gaps after row removal, array_values() reindexes them. Their order is the
+				// POST-body order — that's the only place gallery order lives.
+				'gallery'        => array_values(array_filter(array_map(
+					fn ($g) => [
+						'image_url' => trim((string) ($g['image_url'] ?? '')),
+						'alt'       => trim((string) ($g['alt'] ?? '')),
+					],
+					is_array($post['gallery'] ?? null) ? $post['gallery'] : [],
+				), fn (array $g) => $g['image_url'] !== '')),
+			],
 			'cta' => [
 				'heading'      => $post['heading'] ?? '',
 				'body'         => $this->richTextSanitizer->sanitize($post['body'] ?? ''),
@@ -362,6 +498,11 @@ class PagePresenter extends BasePresenter
 				'email_placeholder'   => $post['email_placeholder'] ?? '',
 				'message_placeholder' => $post['message_placeholder'] ?? '',
 			],
+			// all plain text (auto-escaped on render); `social`/`links` are "Text | URL" lines for LinkList
+			'contact_info' => array_map(
+				fn (string $key) => trim((string) ($post[$key] ?? '')),
+				array_combine(self::CONTACT_INFO_KEYS, self::CONTACT_INFO_KEYS),
+			),
 			default => $component->getContent(),
 		};
 
@@ -398,20 +539,30 @@ class PagePresenter extends BasePresenter
 			$this->error('Komponenta nenalezena.');
 		}
 
-		// Moves happen within the sibling group: children of the same parent, or page roots.
-		// Both lists come ordered by sortOrder (OrderBy mappings on the collections).
+		// Moves happen within the sibling group: children of the same parent, or page roots,
+		// both in display order (ascending sortOrder, or descending in a newest-first container).
 		$parent = $component->getParent();
 		$components = $parent !== null
-			? $parent->getActiveChildren()
+			? $parent->getOrderedChildren()
 			: $component->getPage()->getRootComponents();
 		$index = array_search($component, $components, true);
 		$target = (int) $index + $offset;
 
 		if ($index !== false && $target >= 0 && $target < count($components)) {
-			[$components[$index], $components[$target]] = [$components[$target], $components[$index]];
-			// Renumber the whole sequence — also normalizes any legacy duplicate sort orders
-			foreach ($components as $order => $c) {
-				$c->setSortOrder($order);
+			$orders = array_map(fn (PageComponent $c) => $c->getSortOrder(), $components);
+			if (count(array_unique($orders)) === count($orders)) {
+				// distinct orders: the two neighbours swap their numbers, whichever way the list runs
+				$other = $components[$target];
+				$otherOrder = $other->getSortOrder();
+				$other->setSortOrder($component->getSortOrder());
+				$component->setSortOrder($otherOrder);
+			} else {
+				// legacy duplicate orders: renumber the whole group in display order
+				[$components[$index], $components[$target]] = [$components[$target], $components[$index]];
+				$last = count($components) - 1;
+				foreach ($components as $position => $c) {
+					$c->setSortOrder($parent?->isNewestFirst() ? $last - $position : $position);
+				}
 			}
 			$this->pageManager->save($component->getPage());
 		}
@@ -425,23 +576,10 @@ class PagePresenter extends BasePresenter
 
 		$component = $this->pageManager->getComponentById($componentId);
 		if ($component) {
-			// Soft delete — a deleted container takes its columns with it
-			$deletedBy = $this->getUserEntity();
-			$component->markDeleted($deletedBy);
-			foreach ($component->getActiveChildren() as $child) {
-				$child->markDeleted($deletedBy);
-			}
-			$this->pageManager->save($component->getPage());
+			// a container takes its children (columns, masonry tiles) with it, images included
+			$this->pageManager->deleteComponent($component);
 			$this->flashMessage('Komponenta smazána.', 'success');
 		}
 		$this->redirect('this');
-	}
-
-	// Same SameSite-cookie check Nette\Application\UI\Form does internally, for the raw HTML forms in edit.latte which carry no CSRF token.
-	private function checkSameSiteRequest(): void
-	{
-		if (!$this->getHttpRequest()->isSameSite()) {
-			$this->error('Neplatný požadavek (CSRF ochrana).', IResponse::S403_Forbidden);
-		}
 	}
 }

@@ -17,6 +17,10 @@ class Bootstrap
 		$this->rootDir = dirname(__DIR__);
 		$this->configurator = new Configurator;
 		$this->configurator->setTempDirectory($this->rootDir . '/temp');
+		// Nette derives %wwwDir% from the entry script's directory, so it's www/ under www/index.php but
+		// bin/ under bin/console. Services that build filesystem paths from it (ImageUploader's
+		// %wwwDir%/uploads in services.neon) must get the same answer from both — pin it explicitly.
+		$this->configurator->addStaticParameters(['wwwDir' => $this->rootDir . '/www']);
 	}
 
 

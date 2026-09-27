@@ -7,6 +7,7 @@ namespace App\Entity;
 use DateTime;
 use DateTimeInterface;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'login_logs')]
@@ -15,7 +16,7 @@ class LoginLog
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(name: 'username_attempt', type: 'string', length: 255)]
     private string $usernameAttempt;
@@ -30,7 +31,7 @@ class LoginLog
     private string $userAgent;
 
     #[ORM\Column(name: 'created_at', type: 'datetime')]
-    private \DateTimeInterface $createdAt;
+    private DateTimeInterface $createdAt;
 
 
     public function __construct()
@@ -40,7 +41,7 @@ class LoginLog
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Login log has no ID until it is persisted.');
     }
 
     public function getUsernameAttempt(): string

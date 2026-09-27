@@ -1,6 +1,9 @@
 {layout '../@layout.latte'}
+{import '../Page/_componentEditor.latte'}
 {varType ?App\Entity\LayoutBlock $block}
 {varType string $type}
+{varType array $carousel}
+{varType string $logo}
 
 {var $typeLabel = $type === 'nav' ? 'navigace' : 'patička'}
 
@@ -21,11 +24,68 @@
 	</h1>
 </div>
 
-<div class="card shadow-sm" style="max-width: 720px">
+<div class="card shadow-sm" style="max-width: {$type === 'nav' ? '720px' : '960px'}">
 	<div class="card-body">
-		{control blockForm}
 		{if $type === 'nav'}
-			<div class="form-text mt-2">Jeden odkaz na řádek ve tvaru <code>Text | URL</code>.</div>
+			{* Rendered by hand so the logo upload widget (plain input read from the raw POST) sits inside the <form>. *}
+			<form n:name="blockForm">
+				<div class="mb-3">
+					{label name /}
+					{input name}
+					{inputError name}
+				</div>
+				<div class="mb-3">
+					{label style /}
+					{input style}
+				</div>
+				<div class="mb-3">
+					{label brand /}
+					{input brand}
+					<div class="form-text">{$form['brand']->getOption('description')}</div>
+				</div>
+				{include imageUploadField,
+					id: 'nav-logo',
+					name: 'logo_url',
+					value: $logo,
+					label: 'Logo (nepovinné)',
+					hint: 'Zobrazí se místo textové značky. Ideálně PNG nebo WebP s průhledným pozadím.'}
+				<div class="mb-3">
+					{label content /}
+					{input content}
+					<div class="form-text">Jeden odkaz na řádek ve tvaru <code>Text | URL</code>.</div>
+				</div>
+				<div n:ifset="$form['menus']" class="mb-3">
+					{label menus /}
+					<div n:foreach="$form['menus']->getItems() as $menuId => $menuName" class="form-check">
+						{input menus:$menuId}
+						{label menus:$menuId}{$menuName}{/label}
+					</div>
+				</div>
+				{input send}
+			</form>
+		{else}
+			{* Rendered by hand so the carousel rows (plain inputs, not form controls — read from the
+			   raw POST in LayoutPresenter) sit inside the <form> before the submit button. *}
+			<form n:name="blockForm">
+				{inputError name}
+				<div class="mb-3">
+					{label name /}
+					{input name}
+				</div>
+				<div class="mb-4">
+					{label content /}
+					{input content}
+					{inputError content}
+				</div>
+
+				<div class="form-label fw-semibold">Carousel (nepovinný)</div>
+				<div class="form-text mb-2">Obrázky rolují nad textem patičky v nekonečné smyčce, v tomto pořadí. Každý může odkazovat na URL.</div>
+				{include imageListEditor, field: 'carousel', idPrefix: 'footer-carousel', items: $carousel, withLink: true, addLabel: 'Přidat obrázek'}
+
+				<div class="mt-4">
+					{input send}
+				</div>
+			</form>
 		{/if}
 	</div>
 </div>

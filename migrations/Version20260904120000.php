@@ -7,21 +7,6 @@ namespace App\Migrations;
 use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
-/**
- * Kobra baseline schema — the complete schema in one pass, plus the default users.
- *
- * Written for MariaDB (deployment target, 10.6+ / 10.11 LTS). Notes:
- *  - Booleans are TINYINT(1) everywhere (Doctrine's `boolean` type), so
- *    `orm:validate-schema` stays clean.
- *  - `content` columns are native JSON. On MariaDB 10.4.3+ `JSON` is a LONGTEXT
- *    alias with a `json_valid()` CHECK; Doctrine DBAL's MariaDBPlatform emits and
- *    introspects it as JSON, so this matches the `#[ORM\Column(type: 'json')]`
- *    mapping without a schema diff.
- *  - Every table is explicitly InnoDB / utf8mb4 / utf8mb4_unicode_ci.
- *
- * This squashes the previous MySQL-8 baseline (Version20260709170000) and the two
- * spacing_top / spacing_bottom follow-ups; that history lives in git only.
- */
 final class Version20260904120000 extends AbstractMigration
 {
     public function getDescription(): string
@@ -187,7 +172,6 @@ final class Version20260904120000 extends AbstractMigration
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
 
-        // Default account (password: Admin123 — change immediately after deploy)
         $this->addSql(<<<'SQL'
             INSERT INTO users (username, first_name, last_name, email, phone, password, role, is_active) VALUES
             ('admin', 'Hlavní', 'Administrátor', 'admin@example.com', '+420123456789', '$2y$10$TDs.8sre4gMLG/6rGBPDJus6Wy.huo0TWUUaEGxdDLktprZOeF9hu', 'admin', 1)

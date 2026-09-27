@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Entity\Page;
 use App\Entity\PageComponent;
-use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 
@@ -21,45 +20,32 @@ class PageManager
 	{
 		return $this->em->createQueryBuilder()
 			->select('p')
-			->from(Page::class, 'p')
-			->where('p.deletedDate IS NULL');
+			->from(Page::class, 'p');
 	}
 
 	public function getById(int $id): ?Page
 	{
-		return $this->em->getRepository(Page::class)->findOneBy(['id' => $id, 'deletedDate' => null]);
+		return $this->em->getRepository(Page::class)->find($id);
 	}
 
     public function getByLink(string $link): ?Page
     {
-        return $this->em->getRepository(Page::class)->findOneBy(['link' => $link, 'deletedDate' => null]);
+        return $this->em->getRepository(Page::class)->findOneBy(['link' => $link]);
     }
 
     /** @return Page[] */
     public function findVisible(): array
     {
-        return $this->em->getRepository(Page::class)->findBy(['isVisible' => true, 'deletedDate' => null], ['title' => 'ASC']);
+        return $this->em->getRepository(Page::class)->findBy(['isVisible' => true], ['title' => 'ASC']);
     }
 
     public function getComponentById(int $id): ?PageComponent
     {
-        // A component of a soft-deleted page is gone too — signals must not reach it by id
-        return $this->em->createQueryBuilder()
-            ->select('c')
-            ->from(PageComponent::class, 'c')
-            ->join('c.page', 'p')
-            ->where('c.id = :id')
-            ->andWhere('c.deletedDate IS NULL')
-            ->andWhere('p.deletedDate IS NULL')
-            ->setParameter('id', $id)
-            ->getQuery()
-            ->getOneOrNullResult();
+        return $this->em->getRepository(PageComponent::class)->find($id);
     }
 
     public function linkExists(string $link, ?int $excludeId = null): bool
     {
-        // Deliberately counts soft-deleted pages too: they still hold their row under
-        // the DB unique constraint on link, so their links stay unavailable.
         $qb = $this->em->createQueryBuilder()
             ->select('COUNT(p.id)')
             ->from(Page::class, 'p')
@@ -94,13 +80,20 @@ class PageManager
 		$this->em->flush();
 	}
 
-	/** Soft delete — the row stays for history, every query filters it out via deletedDate. */
-	public function delete(int $id, ?User $deletedBy = null): void
+	/** Hard delete — the page's components go with it (ORM cascade), their images via UploadCleanupListener. */
+	public function delete(int $id): void
 	{
 		$page = $this->getById($id);
 		if ($page) {
-			$page->markDeleted($deletedBy);
+			$this->em->remove($page);
 			$this->em->flush();
 		}
+	}
+
+	/** Hard delete — a container's children go with it (ORM cascade), images via UploadCleanupListener. */
+	public function deleteComponent(PageComponent $component): void
+	{
+		$this->em->remove($component);
+		$this->em->flush();
 	}
 }

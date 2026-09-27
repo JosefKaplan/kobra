@@ -13,7 +13,6 @@ class PagePresenter extends BasePresenter
             $this->error('Stránka nenalezena');
         }
 
-        // The homepage has "/" as its canonical URL (like WordPress' front-page redirect)
         $homepage = $this->getHomepage();
         if ($homepage !== null && $homepage->getId() === $page->getId()) {
             $this->redirectPermanent(':Front:Home:default');

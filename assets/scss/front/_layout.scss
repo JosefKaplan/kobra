@@ -1,152 +1,788 @@
-// Public site shell — navbar + content + footer
-
 html {
-	// Nav links may target in-page anchors (webalized heading ids) — glide instead of jumping
-	scroll-behavior: smooth;
+  scroll-behavior: smooth;
 }
 
 body {
-	min-height: 100vh;
-	display: flex;
-	flex-direction: column;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 main {
-	flex: 1;
+  flex: 1;
+}
+
+// White page with an inset gray panel (.site-canvas: header + content); the footer runs on white below it.
+$panel-inset: 3vw;
+
+// Header, masonry grid and tile detail share this width, so their left edges line up.
+// No max-width — it grows with the viewport (~1290px at 1440px, the whole panel on 4K).
+$wide-gutter: max(1.5rem, 2.2vw);
+$wide-width: calc(100vw - 2 * (#{$panel-inset} + #{$wide-gutter}));
+
+.site-canvas {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  margin: $panel-inset $panel-inset 0;
+  padding-bottom: 3rem;
+  background: $canvas-bg;
 }
 
 .navbar-brand {
-	font-weight: 700;
-	letter-spacing: -.01em;
+  font-weight: 700;
+  letter-spacing: -.01em;
 }
 
-// Centered card used by the auth pages (login / register)
+.navbar-logo {
+  display: block;
+  height: 32px;
+  width: auto;
+}
+
+.site-header {
+  padding: 4.5rem 0 1rem;
+}
+
+.site-header-inner {
+  width: $wide-width;
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  gap: 4.5rem;
+}
+
+.site-header-brand {
+  flex-shrink: 0;
+  color: $site-header-link;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+
+  img {
+    display: block;
+    height: 58px;
+    width: auto;
+  }
+}
+
+.site-header-menu > ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: .9375rem;
+  font-weight: 500;
+  line-height: 1.25;
+
+  > li > a {
+    color: $site-header-link;
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      color: $site-header-link-hover;
+    }
+  }
+}
+
+@include media-breakpoint-down(md) {
+  .site-header {
+    padding-top: 2rem;
+  }
+
+  .site-header-inner {
+    gap: 2rem;
+  }
+
+  .site-header-brand img {
+    height: 44px;
+  }
+}
+
 .auth-wrap {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 3rem 0;
-	min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 0;
+  min-height: 60vh;
 }
 
-// CMS component: hero
 .page-hero {
-	background: linear-gradient(135deg, rgba($primary, .1), rgba($primary, .02));
-	border: 1px solid rgba($primary, .12);
-	border-radius: $border-radius-lg;
-	padding: 4rem 2rem;
-	text-align: center;
+  background: linear-gradient(135deg, $hero-bg-from, $hero-bg-to);
+  border: 1px solid $hero-border;
+  border-radius: $border-radius-lg;
+  padding: 4rem 2rem;
+  text-align: center;
 
-	h1 {
-		font-weight: 700;
-	}
+  h1 {
+    font-weight: 700;
+  }
 }
 
-// Hero with a background image ("cover"): the photo fills the section, a dark
-// gradient keeps the text readable. Explicit z-indexes — all three layers are
-// positioned, so painting order must not depend on DOM order.
 .page-hero-cover {
-	position: relative;
-	overflow: hidden;
-	border: none;
-	padding: 6rem 2rem;
-	color: $white;
+  position: relative;
+  overflow: hidden;
+  border: none;
+  padding: 6rem 2rem;
+  color: $hero-cover-text;
 
-	.page-hero-bg {
-		position: absolute;
-		inset: 0;
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-		z-index: 0;
-	}
+  .page-hero-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+  }
 
-	&::before {
-		content: '';
-		position: absolute;
-		inset: 0;
-		background: linear-gradient(to bottom, rgba($black, .35), rgba($black, .7));
-		z-index: 1;
-	}
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, $hero-cover-overlay-from, $hero-cover-overlay-to);
+    z-index: 1;
+  }
 
-	.page-hero-content {
-		position: relative;
-		z-index: 2;
-	}
+  .page-hero-content {
+    position: relative;
+    z-index: 2;
+  }
 }
 
-// CMS component: image — centered figure; inside a columns row it fills the column
-// so image + text rows line up like cards
 .page-image {
-	text-align: center;
+  text-align: center;
 
-	.col-md & img {
-		width: 100%;
-	}
+  .col-md & img {
+    width: 100%;
+  }
 }
 
-// CMS component: contact form — a narrow centered column reads better than full width
+$masonry-gap: 3px;
+$masonry-radius: 0;
+
+.page-masonry {
+  width: $wide-width;
+  margin-left: calc(50% - #{$wide-width} / 2);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(max(140px, calc((100% - 4 * #{$masonry-gap}) / 5)), 1fr));
+  gap: $masonry-gap;
+  // the design frames every tile with a thin white line, the outer edge included
+  padding: $masonry-gap;
+  background: $masonry-gap-color;
+
+  img {
+    object-fit: cover;
+    border-radius: $masonry-radius;
+  }
+}
+
+.page-masonry-item {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: $masonry-radius;
+  background: none;
+  border: 0;
+  padding: 0;
+  transition: transform .15s ease;
+
+  &:hover {
+    transform: scale(1.03);
+  }
+}
+
+.masonry-book-modal {
+  // Bootstrap's fullscreen dialog is exactly one viewport tall and expects a .modal-body to scroll
+  // inside it; the book has none, so dialog + content grow with the book instead and the whole
+  // .modal scrolls — otherwise a book taller than the screen overflows the background and,
+  // with no backdrop, the page underneath shows through
+  .modal-dialog {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100%;
+  }
+
+  .modal-content {
+    flex: 1 0 auto;
+    height: auto;
+    background: $book-bg;
+  }
+
+  // same width as the grid behind it; the arrows sit at the bottom of the viewport
+  .book-frame {
+    // --book-h: height left for the photos between the close button and the arrow row;
+    // gallery columns scale with it, so main photo + gallery fit a normal-height screen
+    --book-top: max(5rem, 12vh);
+    --book-h: calc(100vh - var(--book-top) - 5rem);
+    --book-col: min(18.6%, var(--book-h) * .25);
+    position: relative;
+    flex: 1 0 auto;
+    width: $wide-width;
+    margin-inline: auto;
+    padding: var(--book-top) 0 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .book-close,
+  .book-nav {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: $book-control;
+    line-height: 0;
+    transition: color .15s ease;
+
+    &:hover,
+    &:focus-visible {
+      color: $book-control-hover;
+    }
+
+    svg {
+      fill: none;
+      stroke: currentColor;
+    }
+  }
+
+  .book-close {
+    position: absolute;
+    top: calc(var(--book-top) - 4.25rem);
+    right: 0;
+    z-index: 2;
+
+    svg {
+      width: 3.25rem;
+      height: 3.25rem;
+      stroke-width: .8;
+    }
+  }
+
+  .book-body {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+  }
+
+  // hugs the photo, so the gallery sits right next to it (as in the design); once gallery
+  // photos get swapped in, masonry.js pins --book-main-w so the gallery doesn't jump around
+  .book-main {
+    flex: 0 1 auto;
+    width: var(--book-main-w, auto);
+    min-width: 0;
+
+    img {
+      display: block;
+      width: auto;
+      max-width: 100%;
+      height: auto;
+      max-height: var(--book-h);
+      border-radius: $masonry-radius;
+    }
+  }
+
+  // as wide as the photo: without width 0 a long text would widen .book-main past it
+  .book-caption {
+    width: 0;
+    min-width: 100%;
+    margin-top: 1rem;
+    font-size: .9375rem;
+
+    p {
+      margin-bottom: 0;
+    }
+  }
+
+  // one narrow column per --gallery-cols, photos keep their own aspect ratio
+  .book-gallery {
+    flex: 0 0 calc(var(--gallery-cols, 1) * var(--book-col) + (var(--gallery-cols, 1) - 1) * .5rem);
+    display: flex;
+    gap: .5rem;
+  }
+
+  .book-gallery-col {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+
+    img {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: $masonry-radius;
+    }
+  }
+
+  // gallery photo = button: shows it in place of the main photo
+  .book-thumb {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    transition: opacity .15s ease;
+
+    &:hover {
+      opacity: .8;
+    }
+  }
+
+  .book-navs {
+    display: flex;
+    margin-top: 1.5rem;
+  }
+
+  .book-nav svg {
+    width: 1.2rem;
+    height: 1.4rem;
+    stroke-width: 1.5;
+  }
+
+  .book-nav-next {
+    margin-left: auto;
+  }
+
+  @include media-breakpoint-down(md) {
+    .book-frame {
+      --book-top: 5rem;
+      padding-bottom: 1.5rem;
+    }
+
+    .book-close {
+      top: 1.5rem;
+
+      svg {
+        width: 2.25rem;
+        height: 2.25rem;
+      }
+    }
+
+    .book-body {
+      flex-direction: column;
+    }
+
+    .book-main,
+    .book-gallery {
+      flex: none;
+      width: 100%;
+    }
+
+    .book-main img {
+      margin-inline: auto;
+      max-height: 70vh;
+    }
+
+    // a short photo next to a tall one sits at the top (a stretched button would centre it)
+    .book-gallery {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      align-items: start;
+    }
+
+    .book-gallery-col {
+      display: contents;
+    }
+
+    // the flattened desktop columns would read 0, 2, 4, 1, 3, 5 — back to the admin order
+    .book-thumb {
+      order: var(--i);
+    }
+  }
+
+  // --- animations ---------------------------------------------------------
+  &.fade {
+    transition: opacity .25s ease;
+
+    .modal-dialog {
+      transition: transform .35s cubic-bezier(.2, .7, .2, 1), opacity .35s ease;
+      transform: scale(.96);
+      opacity: 0;
+    }
+  }
+
+  &.show .modal-dialog {
+    transform: none;
+    opacity: 1;
+  }
+
+  // turning pages with the arrows: the incoming book slides in from the side
+  // the reader is heading to, the outgoing one slides out the other way
+  // (attributes set by assets/front/masonry.js for the duration of the switch)
+  &.fade[data-book-enter='next'] .modal-dialog { transform: translateX(6%); }
+  &.fade[data-book-enter='prev'] .modal-dialog { transform: translateX(-6%); }
+  &.fade[data-book-leave='next'] .modal-dialog { transform: translateX(-6%); }
+  &.fade[data-book-leave='prev'] .modal-dialog { transform: translateX(6%); }
+
+  // the photos settle in one after another once the book is open
+  &.show {
+    .book-main img,
+    .book-caption,
+    .book-gallery img {
+      animation: book-photo-in .45s cubic-bezier(.2, .7, .2, 1) both;
+    }
+
+    .book-caption { animation-delay: .1s; }
+    .book-gallery img { animation-delay: calc(.08s + var(--i, 0) * .06s); }
+
+    // both photos of a gallery swap fade back in (class re-added by assets/front/masonry.js)
+    img.book-swap {
+      animation: book-swap-in .3s ease both;
+    }
+  }
+}
+
+// full-page cover shown while flipping between two books (see assets/front/masonry.js)
+.book-stage {
+  position: fixed;
+  inset: 0;
+  z-index: $zindex-modal - 1;
+  background: $book-bg;
+}
+
+@keyframes book-swap-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes book-photo-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .masonry-book-modal.fade,
+  .masonry-book-modal.fade .modal-dialog {
+    transition: none;
+  }
+
+  .masonry-book-modal.show .book-main img,
+  .masonry-book-modal.show .book-caption,
+  .masonry-book-modal.show .book-gallery img,
+  .masonry-book-modal.show img.book-swap {
+    animation: none;
+  }
+}
+
+// equal-height square boxes, so client logos keep their relative size (as in the design)
+$carousel-height: 111px;
+$carousel-gap: .15rem;
+
+.footer-carousel {
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, #000 2%, #000 98%, transparent);
+
+  &:hover .footer-carousel-track {
+    animation-play-state: paused;
+  }
+}
+
+.footer-carousel-track {
+  display: flex;
+  align-items: center;
+  gap: $carousel-gap;
+  width: max-content;
+  padding-right: $carousel-gap;
+  animation-name: footer-carousel-scroll;
+  animation-duration: var(--carousel-duration, 36s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.footer-carousel-item {
+  flex: 0 0 auto;
+  display: block;
+
+  img {
+    display: block;
+    height: $carousel-height;
+    width: auto;
+  }
+}
+
+a.footer-carousel-item {
+  transition: opacity .15s ease;
+
+  &:hover {
+    opacity: .75;
+  }
+}
+
+@keyframes footer-carousel-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(calc(-100% / var(--carousel-copies, 2))); }
+}
+
+// "Kontaktní údaje" (contact_info): breaks out of the 900px article to the masonry grid's width like
+// .page-masonry — heading + big e-mail/phone links + social buttons on the left, white address and
+// company cards on the canvas on the right, legal links under a hairline at the bottom.
+$contact-max-width: 1290px;
+
+.page-contact {
+  width: $wide-width;
+  margin-left: calc(50% - #{$wide-width} / 2);
+  padding-top: 1.5rem;
+  color: $contact-text;
+
+  // left edge stays on the header's, but a few lines of text don't stretch across a 4K screen
+  > * {
+    max-width: $contact-max-width;
+  }
+
+  // :where() keeps these at single-class specificity, so the element rules below override them
+  :where(a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  :where(ul) {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+}
+
+.page-contact-heading {
+  max-width: 14em;
+  margin-bottom: 1rem;
+  font-size: clamp(1.75rem, 3vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -.02em;
+}
+
+.page-contact-intro {
+  max-width: 32em;
+  margin-bottom: 2rem;
+  color: $contact-muted;
+}
+
+.page-contact-icon {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: $contact-accent-soft;
+  color: $contact-accent;
+  font-size: 1.2rem;
+  transition: background-color .2s ease, color .2s ease;
+}
+
+// e-mail and phone: large type with an underline that draws in on hover
+.page-contact-primary {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 2rem;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 100%;
+
+    &:hover,
+    &:focus-visible {
+      .page-contact-icon {
+        background: $contact-accent;
+        color: $white;
+      }
+
+      .page-contact-primary-text {
+        background-size: 100% 1px;
+      }
+    }
+  }
+}
+
+.page-contact-primary-text {
+  overflow-wrap: anywhere;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 500;
+  letter-spacing: -.01em;
+  background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
+  transition: background-size .3s ease;
+}
+
+.page-contact-social {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .625rem;
+
+  a {
+    display: inline-grid;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    border: 1px solid $contact-line;
+    border-radius: 50%;
+    background: $contact-card-bg;
+    font-size: 1.1rem;
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .2s ease;
+
+    &:hover,
+    &:focus-visible {
+      border-color: $contact-accent;
+      background: $contact-accent;
+      color: $white;
+      transform: translateY(-2px);
+    }
+  }
+}
+
+.page-contact-card {
+  height: 100%;
+  padding: 1.75rem;
+  background: $contact-card-bg;
+  border-radius: $masonry-radius;
+
+  address,
+  p {
+    margin-bottom: 0;
+  }
+
+  p + p {
+    margin-top: .25rem;
+  }
+}
+
+.page-contact-card-title {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: 1rem;
+  color: $contact-muted;
+  font-size: .75rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+
+  .bi {
+    color: $contact-accent;
+    font-size: 1rem;
+  }
+}
+
+.page-contact-map {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  margin-top: 1rem;
+  color: $contact-accent;
+  font-size: .875rem;
+  font-weight: 500;
+
+  .bi {
+    transition: transform .2s ease;
+  }
+
+  &:hover .bi,
+  &:focus-visible .bi {
+    transform: translate(2px, -2px);
+  }
+}
+
+.page-contact-company {
+  font-weight: 600;
+}
+
+.page-contact-register {
+  color: $contact-muted;
+  font-size: .875rem;
+}
+
+.page-contact-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1.5rem;
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid $contact-line;
+  font-size: .875rem;
+
+  a {
+    color: $contact-muted;
+    transition: color .15s ease;
+
+    &:hover,
+    &:focus-visible {
+      color: $contact-text;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-contact *,
+  .page-contact *::before {
+    transition: none !important;
+  }
+}
+
 .page-contact-form form {
-	max-width: 480px;
-	margin-inline: auto;
+  max-width: 480px;
+  margin-inline: auto;
 }
 
-// Homepage page-list cards
 .card-hover {
-	transition: transform .15s ease, box-shadow .15s ease;
+  transition: transform .15s ease, box-shadow .15s ease;
 
-	&:hover {
-		transform: translateY(-2px);
-		box-shadow: $box-shadow !important;
-	}
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: $box-shadow !important;
+  }
 }
 
-// CMS component: call to action
 .page-cta {
-	background-color: $white;
-	border: 1px solid $border-color;
-	border-radius: $border-radius-lg;
-	padding: 2.5rem 2rem;
-	text-align: center;
-	box-shadow: $box-shadow-sm;
+  background-color: $cta-bg;
+  border: 1px solid $cta-border;
+  border-radius: $border-radius-lg;
+  padding: 2.5rem 2rem;
+  text-align: center;
+  box-shadow: $box-shadow-sm;
 }
 
-// CMS rich-text fields (text_block / cta.body / footer.text), edited via Quill in the admin
-// and rendered as sanitized HTML (see App\Helpers\RichTextSanitizer).
 .rich-text {
-	> :last-child {
-		margin-bottom: 0 !important;
-	}
+  > :last-child {
+    margin-bottom: 0 !important;
+  }
 
-	ul, ol {
-		padding-left: 1.5rem;
-	}
+  ul, ol {
+    padding-left: 1.5rem;
+  }
 
-	// Quill always emits <ol>, distinguishing bullet vs. numbered items via a data-list
-	// attribute (see node_modules/quill/formats/list.js) rather than <ul> vs <ol> — replicate
-	// its rendering here since the public site doesn't ship Quill's own CSS.
-	ol {
-		list-style: none;
-		counter-reset: rich-text-ol;
+  ol {
+    list-style: none;
+    counter-reset: rich-text-ol;
 
-		> li[data-list="ordered"] {
-			counter-increment: rich-text-ol;
+    > li[data-list="ordered"] {
+      counter-increment: rich-text-ol;
 
-			&::before {
-				content: counter(rich-text-ol) ". ";
-			}
-		}
+      &::before {
+        content: counter(rich-text-ol) ". ";
+      }
+    }
 
-		> li[data-list="bullet"],
-		> li:not([data-list]) {
-			list-style-type: disc;
-			display: list-item;
-		}
-	}
+    > li[data-list="bullet"],
+    > li:not([data-list]) {
+      list-style-type: disc;
+      display: list-item;
+    }
+  }
 
-	blockquote {
-		border-left: 3px solid $border-color;
-		padding-left: 1rem;
-		color: $text-muted;
-	}
+  blockquote {
+    border-left: 3px solid $blockquote-border;
+    padding-left: 1rem;
+    color: $text-muted;
+  }
 }

@@ -153,13 +153,14 @@ server {
 Ujistěte se, že webserver má právo zápisu do složek:
 
 ```bash
-chmod -R 775 temp/ log/
+chmod -R 775 temp/ log/ www/uploads/
 ```
 
-> `temp/sessions/` je v repu (jen `.gitkeep`, obsah ignorován) – Nette tuhle složku
-> sama nevytvoří, PHP session handler jen selže hláškou "Failed to read session data",
-> pokud neexistuje nebo do ní není zápis. Po klonu/kopii repa proto vždy zkontroluj,
-> že `temp/sessions/` existuje a je zapisovatelná (řeší i `chmod` výše).
+> `temp/sessions/` a `www/uploads/` jsou v repu jen jako `.gitkeep` (obsah ignorován) –
+> Nette/git tyhle složky samy nevytvoří. Bez zápisu do `temp/sessions/` appka selže
+> hláškou "Failed to read session data"; bez zápisu do `www/uploads/` selže nahrávání
+> obrázků v adminu (drag & drop u bloků `hero`/`image`/`masonry`). Po klonu/kopii repa
+> proto vždy zkontroluj, že obě existují a jsou zapisovatelné (řeší i `chmod` výše).
 
 ### 6. Produkční režim
 

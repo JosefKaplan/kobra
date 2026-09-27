@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'pages')]
@@ -17,7 +19,7 @@ class Page
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 255)]
     private string $title;
@@ -30,16 +32,16 @@ class Page
     private bool $isVisible = true;
 
     /** @var Collection<int, PageComponent> */
-    #[ORM\OneToMany(mappedBy: 'page', targetEntity: PageComponent::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: PageComponent::class, mappedBy: 'page', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['sortOrder' => 'ASC'])]
     private Collection $components;
 
-    /** Navbar shown on this page; null (or a soft-deleted block) means no navbar at all. */
+    /** Navbar shown on this page; null means no navbar at all (deleting the block nulls it). */
     #[ORM\ManyToOne(targetEntity: LayoutBlock::class)]
     #[ORM\JoinColumn(name: 'nav_block_id', nullable: true, onDelete: 'SET NULL')]
     private ?LayoutBlock $navBlock = null;
 
-    /** Footer shown on this page; null (or a soft-deleted block) means no footer at all. */
+    /** Footer shown on this page; null means no footer at all (deleting the block nulls it). */
     #[ORM\ManyToOne(targetEntity: LayoutBlock::class)]
     #[ORM\JoinColumn(name: 'footer_block_id', nullable: true, onDelete: 'SET NULL')]
     private ?LayoutBlock $footerBlock = null;
@@ -47,12 +49,12 @@ class Page
     public function __construct()
     {
         $this->components = new ArrayCollection();
-        $this->createdDate = new \DateTimeImmutable();
+        $this->createdDate = new DateTimeImmutable();
     }
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Page has no ID until it is persisted.');
     }
 
     public function getTitle(): string
@@ -94,10 +96,9 @@ class Page
         return $this->components;
     }
 
-    /** Soft-deleted blocks behave as unassigned — the page simply has no navbar. */
     public function getNavBlock(): ?LayoutBlock
     {
-        return $this->navBlock !== null && !$this->navBlock->isDeleted() ? $this->navBlock : null;
+        return $this->navBlock;
     }
 
     public function setNavBlock(?LayoutBlock $navBlock): self
@@ -106,10 +107,9 @@ class Page
         return $this;
     }
 
-    /** Soft-deleted blocks behave as unassigned — the page simply has no footer. */
     public function getFooterBlock(): ?LayoutBlock
     {
-        return $this->footerBlock !== null && !$this->footerBlock->isDeleted() ? $this->footerBlock : null;
+        return $this->footerBlock;
     }
 
     public function setFooterBlock(?LayoutBlock $footerBlock): self
@@ -119,16 +119,15 @@ class Page
     }
 
     /**
-     * Top-level components only — children of container components (columns) are
-     * rendered by their parent, never in the page's main flow. Soft-deleted
-     * components are excluded.
+     * Top-level components only — children of container components (columns, masonry) are
+     * rendered by their parent, never in the page's main flow.
      *
      * @return PageComponent[]
      */
     public function getRootComponents(): array
     {
         return $this->components
-            ->filter(fn (PageComponent $c) => $c->getParent() === null && !$c->isDeleted())
+            ->filter(fn (PageComponent $c) => $c->getParent() === null)
             ->getValues();
     }
 

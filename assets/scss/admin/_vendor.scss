@@ -1,0 +1,57 @@
+// Recolors third-party widgets whose CSS hardcodes blue. `body` outranks their later-loaded rules.
+body {
+  .ql-snow a {
+    color: $widget-accent;
+  }
+
+  .ql-snow.ql-toolbar {
+    button:hover,
+    button:focus,
+    button.ql-active,
+    .ql-picker-label:hover,
+    .ql-picker-label.ql-active,
+    .ql-picker-item:hover,
+    .ql-picker-item.ql-selected {
+      color: $widget-accent;
+
+      .ql-stroke,
+      .ql-stroke-miter {
+        stroke: $widget-accent;
+      }
+
+      .ql-fill,
+      .ql-stroke.ql-fill {
+        fill: $widget-accent;
+      }
+    }
+  }
+
+  .datepicker-cell.selected,
+  .datepicker-cell.selected:hover {
+    background-color: $widget-accent;
+  }
+
+  .datepicker-input.in-edit {
+    border-color: $widget-focus-border;
+
+    &:active,
+    &:focus {
+      box-shadow: 0 0 .25em .25em $widget-focus-ring;
+    }
+  }
+
+  .ts-dropdown .active {
+    background-color: $widget-hover-bg;
+    color: $body-color;
+  }
+
+  .ts-wrapper.multi .ts-control > div.active {
+    background: $widget-accent;
+  }
+
+  .focus .ts-control,
+  .plugin-dropdown_input.focus .ts-dropdown .dropdown-input {
+    border-color: $widget-focus-border;
+    box-shadow: 0 0 0 .25rem $widget-focus-ring;
+  }
+}
