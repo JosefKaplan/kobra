@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Helpers\LinkList;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 /**
  * A reusable named list of links, managed under Admin:Menu. Nav layout blocks
@@ -23,7 +25,7 @@ class Menu
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     /** Shown both in the admin and as the dropdown label on the front. */
     #[ORM\Column(type: 'string', length: 255)]
@@ -35,12 +37,12 @@ class Menu
 
     public function __construct()
     {
-        $this->createdDate = new \DateTimeImmutable();
+        $this->createdDate = new DateTimeImmutable();
     }
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Menu has no ID until it is persisted.');
     }
 
     public function getName(): string

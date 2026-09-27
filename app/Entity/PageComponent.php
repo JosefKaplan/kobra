@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'page_components')]
@@ -22,13 +24,16 @@ class PageComponent
         'xl'   => '6rem',
     ];
 
+    /** Container types whose children are listed by descending sortOrder (see isNewestFirst()). */
+    public const NEWEST_FIRST_TYPES = ['masonry'];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: Page::class, inversedBy: 'components')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     private Page $page;
 
     /** Container component (e.g. `columns`) this component is nested in; null for top-level components. */
@@ -37,7 +42,7 @@ class PageComponent
     private ?PageComponent $parent = null;
 
     /** @var Collection<int, PageComponent> */
-    #[ORM\OneToMany(mappedBy: 'parent', targetEntity: self::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OneToMany(targetEntity: self::class, mappedBy: 'parent', cascade: ['persist', 'remove'], orphanRemoval: true)]
     #[ORM\OrderBy(['sortOrder' => 'ASC'])]
     private Collection $children;
 
@@ -65,12 +70,12 @@ class PageComponent
     public function __construct()
     {
         $this->children = new ArrayCollection();
-        $this->createdDate = new \DateTimeImmutable();
+        $this->createdDate = new DateTimeImmutable();
     }
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Page component has no ID until it is persisted.');
     }
 
     public function getPage(): Page
@@ -96,16 +101,22 @@ class PageComponent
     }
 
     /**
-     * Children that still exist (soft-deleted ones excluded) — what the app should
-     * render, count and reorder. getChildren() stays raw for collection management.
+     * Children in display order — what the app should render, count and reorder.
+     * getChildren() stays the raw (ascending) collection for collection management.
      *
      * @return PageComponent[]
      */
-    public function getActiveChildren(): array
+    public function getOrderedChildren(): array
     {
-        return $this->children
-            ->filter(fn (PageComponent $c) => !$c->isDeleted())
-            ->getValues();
+        $children = $this->children->getValues();
+
+        return $this->isNewestFirst() ? array_reverse($children) : $children;
+    }
+
+    /** Container listing its children newest (highest sortOrder) first — a new child lands on top without renumbering. */
+    public function isNewestFirst(): bool
+    {
+        return in_array($this->type, self::NEWEST_FIRST_TYPES, true);
     }
 
     public function addChild(PageComponent $child): self

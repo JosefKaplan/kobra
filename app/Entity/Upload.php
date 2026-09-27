@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 /**
  * One image file uploaded through the admin (App\Helpers\ImageUploader) and stored under
- * www/uploads/. Independent of where/whether it's actually referenced — content fields that
- * point at an upload (e.g. a masonry_item's main_image_url / gallery[].image_url, hero.image_url, image.url) just hold its
- * public URL as a plain string, not a foreign key. This table exists purely as an audit trail /
- * foundation for a future media library (cleanup of orphaned files, a picker UI, …); nothing
- * reads it yet beyond ImageUploader writing to it.
+ * www/uploads/. Content fields that point at an upload (e.g. a masonry_item's main_image_url /
+ * gallery[].image_url, hero.image_url, image.url) just hold its public URL as a plain string,
+ * not a foreign key — App\Models\UploadCleaner finds the references by scanning content and
+ * deletes the row together with its file once nothing refers to it.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'uploads')]
@@ -23,7 +24,7 @@ class Upload
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     /** Relative to www/uploads/, e.g. "2026/09/nazev-a1b2c3d4.jpg" — getUrl() prefixes it with /uploads/. */
     #[ORM\Column(type: 'string', length: 500)]
@@ -42,12 +43,12 @@ class Upload
 
     public function __construct()
     {
-        $this->createdDate = new \DateTimeImmutable();
+        $this->createdDate = new DateTimeImmutable();
     }
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Upload has no ID until it is persisted.');
     }
 
     public function getPath(): string

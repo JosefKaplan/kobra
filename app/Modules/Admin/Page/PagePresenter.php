@@ -117,7 +117,7 @@ class PagePresenter extends BasePresenter
 		$grid->addAction('delete', 'Smazat', 'delete!')
 			->setIcon('trash')
 			->setClass('btn btn-xs btn-outline-danger ajax')
-			->setConfirmation(new StringConfirmation('Opravdu smazat tuto stránku včetně všech komponent?'));
+			->setConfirmation(new StringConfirmation('Opravdu smazat tuto stránku natrvalo, včetně všech bloků a jejich obrázků? Nelze vrátit.'));
 		$grid->addToolbarButton('add', 'Nová stránka')
 			->setIcon('plus')
 			->setClass('btn btn-primary');
@@ -132,7 +132,7 @@ class PagePresenter extends BasePresenter
 			$this->settingsManager->set(SettingsManager::HOMEPAGE_PAGE_ID, null);
 		}
 
-		$this->pageManager->delete($id, $this->getUserEntity());
+		$this->pageManager->delete($id);
 		$this->flashMessage('Stránka smazána.', 'success');
 
 		if ($this->isAjax()) {
@@ -304,7 +304,7 @@ class PagePresenter extends BasePresenter
 			if (!in_array($type, $container['children'], true)) {
 				$this->error('Tento typ bloku nelze vložit do této komponenty.', IResponse::S400_BadRequest);
 			}
-			if ($container['max'] !== null && count($parent->getActiveChildren()) >= $container['max']) {
+			if ($container['max'] !== null && count($parent->getOrderedChildren()) >= $container['max']) {
 				$this->flashMessage('Komponenta může mít nejvýše ' . $container['max'] . ' vnořené bloky.', 'warning');
 				$this->redirect('this');
 			}
@@ -322,7 +322,8 @@ class PagePresenter extends BasePresenter
 	 * Bulk creation of `masonry_item` tiles behind the masonry screen's dropzone: the browser
 	 * uploads the picked files one at a time through uploadImage! (same single-file endpoint as
 	 * every other image widget, so PHP's request-wide post_max_size/max_file_uploads never
-	 * apply) and then POSTs the resulting URLs here — one new tile per URL, appended in order.
+	 * apply) and then POSTs the resulting URLs here — one new tile per URL, added at the top
+	 * of the grid in upload order.
 	 */
 	public function handleCreateMasonryItems(int $parentId): void
 	{
@@ -345,7 +346,8 @@ class PagePresenter extends BasePresenter
 			is_array($post['urls'] ?? null) ? $post['urls'] : [],
 		), fn (string $url) => $url !== ''));
 
-		foreach ($urls as $url) {
+		// newest-first container: created back to front, so the batch reads in upload order at the top
+		foreach ($parent->isNewestFirst() ? array_reverse($urls) : $urls as $url) {
 			$content = self::defaultContent($bulk['child']);
 			$content[$bulk['urlKey']] = $url;
 			// One flush for the whole batch (below): all-or-nothing, and no per-child changeset pass
@@ -392,8 +394,9 @@ class PagePresenter extends BasePresenter
 	}
 
 	/**
-	 * Builds and attaches one new component at the end of its sibling group (children of $parent,
-	 * or the page's roots) and, unless $flush is false, saves the page. With $flush false the
+	 * Builds and attaches one new component with the highest sort order of its sibling group
+	 * (children of $parent, or the page's roots) — the end of the list, or its top in a newest-first
+	 * container — and, unless $flush is false, saves the page. With $flush false the
 	 * caller saves once for a whole batch — the sibling scan still sees the earlier additions,
 	 * since addChild()/addComponent() update the in-memory collections immediately.
 	 *
@@ -402,7 +405,7 @@ class PagePresenter extends BasePresenter
 	private function persistNewComponent(Page $page, ?PageComponent $parent, string $type, array $content, bool $flush = true): PageComponent
 	{
 		// max+1 within the sibling group; count() could duplicate an existing order after deletions
-		$siblings = $parent !== null ? $parent->getActiveChildren() : $page->getRootComponents();
+		$siblings = $parent !== null ? $parent->getOrderedChildren() : $page->getRootComponents();
 		$maxSortOrder = -1;
 		foreach ($siblings as $existing) {
 			$maxSortOrder = max($maxSortOrder, $existing->getSortOrder());
@@ -469,7 +472,7 @@ class PagePresenter extends BasePresenter
 				'main_image_url' => trim((string) ($post['main_image_url'] ?? '')),
 				'main_image_alt' => trim((string) ($post['main_image_alt'] ?? '')),
 				'heading'        => trim((string) ($post['heading'] ?? '')),
-				'text'           => trim((string) ($post['text'] ?? '')),
+				'text'           => $this->richTextSanitizer->sanitize((string) ($post['text'] ?? '')),
 				// Gallery rows arrive as gallery[<index>][image_url|alt] (see masonry.js); indices may
 				// have gaps after row removal, array_values() reindexes them. Their order is the
 				// POST-body order — that's the only place gallery order lives.
@@ -536,20 +539,30 @@ class PagePresenter extends BasePresenter
 			$this->error('Komponenta nenalezena.');
 		}
 
-		// Moves happen within the sibling group: children of the same parent, or page roots.
-		// Both lists come ordered by sortOrder (OrderBy mappings on the collections).
+		// Moves happen within the sibling group: children of the same parent, or page roots,
+		// both in display order (ascending sortOrder, or descending in a newest-first container).
 		$parent = $component->getParent();
 		$components = $parent !== null
-			? $parent->getActiveChildren()
+			? $parent->getOrderedChildren()
 			: $component->getPage()->getRootComponents();
 		$index = array_search($component, $components, true);
 		$target = (int) $index + $offset;
 
 		if ($index !== false && $target >= 0 && $target < count($components)) {
-			[$components[$index], $components[$target]] = [$components[$target], $components[$index]];
-			// Renumber the whole sequence — also normalizes any legacy duplicate sort orders
-			foreach ($components as $order => $c) {
-				$c->setSortOrder($order);
+			$orders = array_map(fn (PageComponent $c) => $c->getSortOrder(), $components);
+			if (count(array_unique($orders)) === count($orders)) {
+				// distinct orders: the two neighbours swap their numbers, whichever way the list runs
+				$other = $components[$target];
+				$otherOrder = $other->getSortOrder();
+				$other->setSortOrder($component->getSortOrder());
+				$component->setSortOrder($otherOrder);
+			} else {
+				// legacy duplicate orders: renumber the whole group in display order
+				[$components[$index], $components[$target]] = [$components[$target], $components[$index]];
+				$last = count($components) - 1;
+				foreach ($components as $position => $c) {
+					$c->setSortOrder($parent?->isNewestFirst() ? $last - $position : $position);
+				}
 			}
 			$this->pageManager->save($component->getPage());
 		}
@@ -563,13 +576,8 @@ class PagePresenter extends BasePresenter
 
 		$component = $this->pageManager->getComponentById($componentId);
 		if ($component) {
-			// Soft delete — a deleted container takes its children (columns, masonry tiles) with it
-			$deletedBy = $this->getUserEntity();
-			$component->markDeleted($deletedBy);
-			foreach ($component->getActiveChildren() as $child) {
-				$child->markDeleted($deletedBy);
-			}
-			$this->pageManager->save($component->getPage());
+			// a container takes its children (columns, masonry tiles) with it, images included
+			$this->pageManager->deleteComponent($component);
 			$this->flashMessage('Komponenta smazána.', 'success');
 		}
 		$this->redirect('this');

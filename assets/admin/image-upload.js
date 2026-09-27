@@ -42,11 +42,19 @@ export function spinnerOverlay(dropzone, label = 'Nahrávám…') {
 
 export function applyUploadedUrl(root, url) {
     const valueInput = root.querySelector('[data-image-upload-value]');
-    const dropzone = root.querySelector('[data-image-upload-dropzone]');
     if (valueInput) valueInput.value = url;
+    setPreview(root, url);
+}
+
+function setPreview(root, url) {
+    const dropzone = root.querySelector('[data-image-upload-dropzone]');
     if (!dropzone) return;
 
     let preview = dropzone.querySelector('[data-image-upload-preview]');
+    if (url === '') {
+        preview?.remove();
+        return;
+    }
     if (!preview) {
         preview = document.createElement('img');
         preview.className = 'image-upload-preview';
@@ -97,6 +105,10 @@ export function enhanceImageUpload(root) {
     };
 
     wireDropzone(dropzone, root.querySelector('[data-image-upload-input]'), root.querySelector('[data-image-upload-browse]'), (files) => upload(files[0]),);
+
+    // a pasted/typed URL gets a preview too — on change, not per keystroke (no requests for half-typed URLs)
+    const valueInput = root.querySelector('[data-image-upload-value]');
+    valueInput?.addEventListener('change', () => setPreview(root, valueInput.value.trim()));
 }
 
 export function initImageUploads(scope = document) {

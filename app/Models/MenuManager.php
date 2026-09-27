@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Entity\Menu;
-use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
 
@@ -20,13 +19,12 @@ class MenuManager
 	{
 		return $this->em->createQueryBuilder()
 			->select('m')
-			->from(Menu::class, 'm')
-			->where('m.deletedDate IS NULL');
+			->from(Menu::class, 'm');
 	}
 
 	public function getById(int $id): ?Menu
 	{
-		return $this->em->getRepository(Menu::class)->findOneBy(['id' => $id, 'deletedDate' => null]);
+		return $this->em->getRepository(Menu::class)->find($id);
 	}
 
 	/** @param int[] $ids
@@ -41,7 +39,6 @@ class MenuManager
 			->select('m')
 			->from(Menu::class, 'm')
 			->where('m.id IN (:ids)')
-			->andWhere('m.deletedDate IS NULL')
 			->setParameter('ids', $ids)
 			->orderBy('m.name', 'ASC')
 			->getQuery()
@@ -56,7 +53,7 @@ class MenuManager
 	public function getSelectItems(): array
 	{
 		$menus = $this->em->getRepository(Menu::class)
-			->findBy(['deletedDate' => null], ['name' => 'ASC']);
+			->findBy([], ['name' => 'ASC']);
 
 		$items = [];
 		foreach ($menus as $menu) {
@@ -72,12 +69,12 @@ class MenuManager
 		$this->em->flush();
 	}
 
-	/** Soft delete — nav blocks referencing the menu just stop showing it (LayoutBlock::getActiveMenus filters). */
-	public function delete(int $id, ?User $deletedBy = null): void
+	/** Hard delete — nav blocks using the menu lose its dropdown (layout_block_menus rows go ON DELETE CASCADE). */
+	public function delete(int $id): void
 	{
 		$menu = $this->getById($id);
 		if ($menu) {
-			$menu->markDeleted($deletedBy);
+			$this->em->remove($menu);
 			$this->em->flush();
 		}
 	}

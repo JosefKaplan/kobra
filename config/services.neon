@@ -3,6 +3,9 @@ services:
 	- App\Core\Security\Authenticator
 	- App\Helpers\RichTextSanitizer(%tempDir%/htmlpurifier)
 	- App\Helpers\ImageUploader(%wwwDir%/uploads)
+	- App\Models\UploadCleaner(%wwwDir%/uploads)
+	# Doctrine EventSubscriber — Nettrine hooks every such service into the EntityManager
+	- App\Models\UploadCleanupListener
 
 
 search:

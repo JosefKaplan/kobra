@@ -62,6 +62,35 @@ body {
   overflow-x: auto;
 }
 
+// A grid wider than its card (users: 9 columns + filters need ~850px) scrolls inside the card
+// instead of spilling out of it, with the row actions and the toolbar ("Nový uživatel") kept in
+// view at its right edge. Only below xl, where that can happen — the scroll container also clips
+// a filter's TomSelect dropdown, so it makes room for one while it's open.
+@include media-breakpoint-down(xl) {
+  .datagrid > div {
+    overflow-x: auto;
+
+    &:has(.ts-wrapper.dropdown-active) {
+      padding-bottom: 13rem;
+    }
+
+    // collapsed borders don't travel with a sticky cell — its left rule is drawn as a shadow,
+    // on top of the one Bootstrap paints the row striping/hover with
+    th.col-action,
+    td.col-action {
+      position: sticky;
+      right: 0;
+      box-shadow: inset 1px 0 0 var(--bs-border-color), inset 0 0 0 9999px var(--bs-table-bg-state, var(--bs-table-bg-type, var(--bs-table-accent-bg)));
+    }
+
+    .datagrid-toolbar,
+    .row-grid-bottom .col-per-page {
+      position: sticky;
+      right: .75rem;
+    }
+  }
+}
+
 @include media-breakpoint-down(md) {
   #wrapper {
     flex-direction: column;
@@ -175,20 +204,6 @@ $type-colors: (
   object-fit: cover;
   border-radius: $border-radius-sm;
   flex-shrink: 0;
-}
-
-.masonry-drag-handle {
-  cursor: grab;
-  touch-action: none;
-}
-
-.masonry-item-dragging {
-  opacity: .5;
-}
-
-.masonry-sorting {
-  cursor: grabbing;
-  user-select: none;
 }
 
 // brief highlight after an arrow move so the eye follows the row

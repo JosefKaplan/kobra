@@ -175,6 +175,10 @@ php bin/console migrations:migrate --no-interaction
 
 Migrace zároveň naseeduje výchozí účet `admin`/`Admin123`.
 
+**Před migrací na produkci vždy zálohuj DB** (export přes phpMyAdmin / `mysqldump`) — migrace
+`Version20260927141706` natrvalo odstraní dříve „smazané" (soft-deleted) řádky. Jejich obrázky
+na serveru pak smaže admin při první návštěvě (migrace běží z lokálu, na soubory serveru nedosáhne).
+
 Pokud hosting vzdálený přístup k DB nemá: exportuj lokální schéma (`mysqldump kobra > dump.sql` z čerstvě zmigrované lokální DB; `mysqldump` funguje i pro MariaDB) a naimportuj přes phpMyAdmin hostingu.
 
 ### 5.6 Ověření a zabezpečení — hned po nasazení
@@ -229,8 +233,10 @@ CMS umí nahrávání obrázků (drag & drop / výběr souboru u `hero`, `image`
 - Uploady jsou jediná binární data mimo DB → zálohovat spolu s dumpem DB (samotná DB tabulka
   `uploads` drží jen metadata/audit záznam, ne obsah souboru).
 - Na sdíleném hostingu hlídat diskovou kvótu (Porkbun Starter: 10 GB).
-- Smazání komponenty/položky, která na upload odkazovala, soubor ani jeho DB záznam nemaže —
-  osiřelé soubory jsou zatím vědomý dluh (správa/čištění přijde s budoucí media knihovnou).
+- Mazání je všude natvrdo: se smazanou komponentou, stránkou, patičkou či navigací zmizí i její
+  obrázky (soubor v `www/uploads/` i řádek v `uploads`), jakmile na ně nic jiného neodkazuje.
+  Obrázky nahrané, ale nikdy neuložené do obsahu, uklidí admin sám jednou denně (starší než 24 h)
+  — cron k tomu potřeba není. Smazané nejde vrátit, proto zálohuj DB i `www/uploads/`.
 
 ---
 

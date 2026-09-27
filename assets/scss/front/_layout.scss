@@ -16,8 +16,9 @@ main {
 $panel-inset: 3vw;
 
 // Header, masonry grid and tile detail share this width, so their left edges line up.
-$wide-max-width: 1290px;
-$wide-width: min(#{$wide-max-width}, 100vw - 2 * #{$panel-inset} - 3rem);
+// No max-width — it grows with the viewport (~1290px at 1440px, the whole panel on 4K).
+$wide-gutter: max(1.5rem, 2.2vw);
+$wide-width: calc(100vw - 2 * (#{$panel-inset} + #{$wide-gutter}));
 
 .site-canvas {
   flex: 1 0 auto;
@@ -282,7 +283,10 @@ $masonry-radius: 0;
     }
   }
 
+  // as wide as the photo: without width 0 a long text would widen .book-main past it
   .book-caption {
+    width: 0;
+    min-width: 100%;
     margin-top: 1rem;
     font-size: .9375rem;
 
@@ -373,13 +377,20 @@ $masonry-radius: 0;
       max-height: 70vh;
     }
 
+    // a short photo next to a tall one sits at the top (a stretched button would centre it)
     .book-gallery {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
+      align-items: start;
     }
 
     .book-gallery-col {
       display: contents;
+    }
+
+    // the flattened desktop columns would read 0, 2, 4, 1, 3, 5 — back to the admin order
+    .book-thumb {
+      order: var(--i);
     }
   }
 
@@ -515,11 +526,18 @@ a.footer-carousel-item {
 // "Kontaktní údaje" (contact_info): breaks out of the 900px article to the masonry grid's width like
 // .page-masonry — heading + big e-mail/phone links + social buttons on the left, white address and
 // company cards on the canvas on the right, legal links under a hairline at the bottom.
+$contact-max-width: 1290px;
+
 .page-contact {
   width: $wide-width;
   margin-left: calc(50% - #{$wide-width} / 2);
   padding-top: 1.5rem;
   color: $contact-text;
+
+  // left edge stays on the header's, but a few lines of text don't stretch across a 4K screen
+  > * {
+    max-width: $contact-max-width;
+  }
 
   // :where() keeps these at single-class specificity, so the element rules below override them
   :where(a) {

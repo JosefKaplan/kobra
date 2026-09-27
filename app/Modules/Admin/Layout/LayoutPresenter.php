@@ -60,14 +60,14 @@ class LayoutPresenter extends BasePresenter
 		$grid->addAction('delete', 'Smazat', 'delete!')
 			->setIcon('trash')
 			->setClass('btn btn-xs btn-outline-danger ajax')
-			->setConfirmation(new StringConfirmation('Opravdu smazat? Stránky, které tento blok používají, jej přestanou zobrazovat.'));
+			->setConfirmation(new StringConfirmation('Opravdu smazat natrvalo, včetně obrázků karuselu a loga? Stránky, které tento blok používají, jej přestanou zobrazovat. Nelze vrátit.'));
 
 		return $grid;
 	}
 
 	public function handleDelete(int $id): void
 	{
-		$this->layoutBlockManager->delete($id, $this->getUserEntity());
+		$this->layoutBlockManager->delete($id);
 		$this->flashMessage('Blok smazán.', 'success');
 
 		if ($this->isAjax()) {
@@ -109,7 +109,7 @@ class LayoutPresenter extends BasePresenter
 		if ($block->getType() === LayoutBlock::TYPE_NAV) {
 			$defaults['style'] = $block->getStyle();
 			$defaults['brand'] = $content['brand'] ?? '';
-			$defaults['menus'] = array_map(fn ($menu) => $menu->getId(), $block->getActiveMenus());
+			$defaults['menus'] = array_map(fn ($menu) => $menu->getId(), $block->getMenus());
 		}
 		$this['blockForm']->setDefaults($defaults);
 

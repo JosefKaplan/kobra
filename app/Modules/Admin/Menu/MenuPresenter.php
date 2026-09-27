@@ -53,14 +53,14 @@ class MenuPresenter extends BasePresenter
 		$grid->addAction('delete', 'Smazat', 'delete!')
 			->setIcon('trash')
 			->setClass('btn btn-xs btn-outline-danger ajax')
-			->setConfirmation(new StringConfirmation('Opravdu smazat? Navigace, které toto menu používají, jej přestanou zobrazovat.'));
+			->setConfirmation(new StringConfirmation('Opravdu smazat natrvalo? Navigace, které toto menu používají, jej přestanou zobrazovat. Nelze vrátit.'));
 
 		return $grid;
 	}
 
 	public function handleDelete(int $id): void
 	{
-		$this->menuManager->delete($id, $this->getUserEntity());
+		$this->menuManager->delete($id);
 		$this->flashMessage('Menu smazáno.', 'success');
 
 		if ($this->isAjax()) {

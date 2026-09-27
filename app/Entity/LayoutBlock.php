@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Entity;
 
+use App\Helpers\LinkList;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
-use App\Helpers\LinkList;
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 /**
  * A reusable navbar or footer, configured centrally in the admin (Admin:Layout)
@@ -35,7 +37,7 @@ class LayoutBlock
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 20)]
     private string $type = self::TYPE_NAV;
@@ -60,12 +62,12 @@ class LayoutBlock
     public function __construct()
     {
         $this->menus = new ArrayCollection();
-        $this->createdDate = new \DateTimeImmutable();
+        $this->createdDate = new DateTimeImmutable();
     }
 
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('Layout block has no ID until it is persisted.');
     }
 
     public function getType(): string
@@ -117,16 +119,13 @@ class LayoutBlock
     }
 
     /**
-     * Menus that still exist (soft-deleted ones excluded) — what the front renders
-     * and the edit form pre-checks.
+     * Dropdown menus of this navbar — what the front renders and the edit form pre-checks.
      *
      * @return Menu[]
      */
-    public function getActiveMenus(): array
+    public function getMenus(): array
     {
-        return $this->menus
-            ->filter(fn (Menu $m) => !$m->isDeleted())
-            ->getValues();
+        return $this->menus->getValues();
     }
 
     /** @param Menu[] $menus */

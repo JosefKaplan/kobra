@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use LogicException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
@@ -13,7 +14,7 @@ class User
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    private int $id;
+    private ?int $id = null;
 
     #[ORM\Column(type: 'string', length: 255, unique: true)]
     private string $username;
@@ -39,13 +40,9 @@ class User
     #[ORM\Column(name: 'is_active', type: 'boolean', options: ['default' => true])]
     private bool $isActive = true;
 
-    #[ORM\Column(name: 'deleted_at', type: 'datetime', nullable: true)]
-    private ?\DateTimeInterface $deletedAt = null;
-
-
     public function getId(): int
     {
-        return $this->id;
+        return $this->id ?? throw new LogicException('User has no ID until it is persisted.');
     }
 
     public function getUsername(): string
@@ -133,17 +130,6 @@ class User
     public function setIsActive(bool $isActive): self
     {
         $this->isActive = $isActive;
-        return $this;
-    }
-
-    public function getDeletedAt(): ?\DateTimeInterface
-    {
-        return $this->deletedAt;
-    }
-
-    public function setDeletedAt(?\DateTimeInterface $deletedAt): self
-    {
-        $this->deletedAt = $deletedAt;
         return $this;
     }
 }

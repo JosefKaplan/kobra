@@ -26,10 +26,10 @@
 				<a class="site-header-brand" n:href=":Front:Home:default">
 					{if $navLogo !== ''}<img src="{$navLogo}" alt="{$navBrand}">{else}{$navBrand}{/if}
 				</a>
-				<nav n:if="$navBlock->getLinks() || $navBlock->getActiveMenus()" class="site-header-menu" aria-label="Hlavní navigace">
+				<nav n:if="$navBlock->getLinks() || $navBlock->getMenus()" class="site-header-menu" aria-label="Hlavní navigace">
 					<ul>
 						<li n:foreach="$navBlock->getLinks() as $link"><a href="{$link['url']}">{$link['label']}</a></li>
-						<li n:foreach="$navBlock->getActiveMenus() as $menu" class="dropdown">
+						<li n:foreach="$navBlock->getMenus() as $menu" class="dropdown">
 							{varType App\Entity\Menu $menu}
 							<a href="#" class="dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">{$menu->getName()}</a>
 							<ul class="dropdown-menu">
@@ -56,7 +56,7 @@
 							<a class="nav-link" href="{$link['url']}">{$link['label']}</a>
 						</li>
 						{* Assigned menus become dropdowns, labelled with the menu name *}
-						{foreach $navBlock->getActiveMenus() as $menu}
+						{foreach $navBlock->getMenus() as $menu}
 							{varType App\Entity\Menu $menu}
 							<li class="nav-item dropdown">
 								<a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">

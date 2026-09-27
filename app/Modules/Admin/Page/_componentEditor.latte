@@ -26,9 +26,9 @@
 {/define}
 
 {*
- * One row of an editable image list — image (upload widget) + alt text + grip handle, ↑/↓ arrows
- * and remove; with $withLink also a URL the image links to. Used for a `masonry_item` tile's
- * gallery (`gallery[<index>]`) and a footer block's carousel (`carousel[<index>]`, Admin:Layout).
+ * One row of an editable image list — image (upload widget) + alt text + ↑/↓ arrows and remove;
+ * with $withLink also a URL the image links to. Used for a `masonry_item` tile's gallery
+ * (`gallery[<index>]`) and a footer block's carousel (`carousel[<index>]`, Admin:Layout).
  * Rendered for existing rows and — with $index as the literal placeholder string '__INDEX__' — as
  * the `<template>` masonry.js clones and renumbers when "Přidat" is clicked or the bulk dropzone
  * finishes an upload (see `data-gallery-template`). Order is purely the DOM/POST order.
@@ -53,11 +53,6 @@
 			{/if}
 			{* controls sit under the inputs so the row never overflows the card at narrow widths *}
 			<div class="d-flex flex-wrap gap-1">
-				<button type="button" class="btn btn-outline-secondary btn-sm masonry-drag-handle" data-gallery-item-drag-handle
-				        title="Přetáhněte pro změnu pořadí" aria-label="Přetáhněte pro změnu pořadí">
-					<i class="bi bi-grip-vertical"></i>
-				</button>
-				{* up/down arrows: same client-side reorder as the drag, for those who don't drag (masonry.js) *}
 				<button type="button" class="btn btn-outline-secondary btn-sm" data-gallery-item-move="up" title="Posunout výš" aria-label="Posunout výš">
 					<i class="bi bi-arrow-up"></i>
 				</button>
@@ -91,7 +86,7 @@
 			<div class="small text-danger mt-1" data-error hidden></div>
 		</div>
 		<div class="small text-muted mb-2" n:if="count($items)">
-			<i class="bi bi-grip-vertical"></i> Pořadí změníte přetažením za úchyt nebo šipkami. Ukládá se s formulářem.
+			Pořadí změníte šipkami <i class="bi bi-arrow-up"></i>/<i class="bi bi-arrow-down"></i>. Ukládá se s formulářem.
 		</div>
 		<div n:inner-foreach="$items as $i => $item" data-gallery-items>
 			{include imageListRow, field: $field, idPrefix: $idPrefix, index: (string) $i, item: $item, withLink: $withLink}
@@ -173,7 +168,7 @@
 		</div>
 		<a n:href="deleteComponent! componentId => $componentId"
 		   class="btn btn-outline-danger btn-sm"
-		   onclick="return confirm('Smazat tuto komponentu?')">
+		   onclick="return confirm('Smazat natrvalo, včetně obrázků a vnořených bloků? Nelze vrátit.')">
 			<i class="bi bi-trash"></i>
 		</a>
 	</div>
@@ -273,7 +268,7 @@
 		{elseif $component->getType() === 'columns'}
 			<div class="mb-3 d-flex align-items-center justify-content-between gap-3 p-3 bg-light border rounded-3">
 				<div>
-					<div class="fw-semibold mb-1">Počet sloupců: {count($component->getActiveChildren())}</div>
+					<div class="fw-semibold mb-1">Počet sloupců: {count($component->getOrderedChildren())}</div>
 					<div class="small text-muted">Každý sloupec je samostatný blok. Přidávat, upravovat a řadit je můžete na samostatné stránce.</div>
 				</div>
 				<a n:href="columns, id => $componentId" class="btn btn-primary btn-sm text-nowrap">
@@ -284,7 +279,7 @@
 		{elseif $component->getType() === 'masonry'}
 			<div class="mb-3 d-flex align-items-center justify-content-between gap-3 p-3 bg-light border rounded-3">
 				<div>
-					<div class="fw-semibold mb-1">Počet dlaždic: {count($component->getActiveChildren())}</div>
+					<div class="fw-semibold mb-1">Počet dlaždic: {count($component->getOrderedChildren())}</div>
 					<div class="small text-muted">Každá dlaždice je samostatný blok s hlavní fotkou, nadpisem, textem a galerií. Přidávat, upravovat a řadit je můžete na samostatné stránce.</div>
 				</div>
 				<a n:href="masonry, id => $componentId" class="btn btn-primary btn-sm text-nowrap">
@@ -313,7 +308,7 @@
 					<div class="mb-3">
 						<label for="cmp-{$componentId}-text" class="form-label">Text (nepovinný)</label>
 						<textarea id="cmp-{$componentId}-text" name="text" class="form-control" rows="4"
-						          placeholder="Text zobrazený po rozkliknutí…">{$componentContent['text'] ?? ''}</textarea>
+						          data-richtext placeholder="Text zobrazený po rozkliknutí…">{$componentContent['text'] ?? ''}</textarea>
 					</div>
 				</div>
 				<div class="col-md-6">

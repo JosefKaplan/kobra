@@ -36,10 +36,7 @@ class UserManager
 
 	public function findByUsername(string $username): ?User
 	{
-		return $this->em->getRepository(User::class)->findOneBy([
-			'username' => $username,
-			'deletedAt' => null,
-		]);
+		return $this->em->getRepository(User::class)->findOneBy(['username' => $username]);
 	}
 
 	public function isDuplicate(string $username, string $email): bool
@@ -48,7 +45,6 @@ class UserManager
 		$qb->select('COUNT(u.id)')
 			->from(User::class, 'u')
 			->where('(u.username = :username OR u.email = :email)')
-			->andWhere('u.deletedAt IS NULL')
 			->setParameter('username', $username)
 			->setParameter('email', $email);
 
@@ -56,25 +52,18 @@ class UserManager
 	}
 
 	/**
-	 * Returns all non-deleted users as a Doctrine QueryBuilder (for datagrid compatibility).
+	 * Returns all users as a Doctrine QueryBuilder (for datagrid compatibility).
 	 */
 	public function findAll(): \Doctrine\ORM\QueryBuilder
 	{
 		return $this->em->createQueryBuilder()
 			->select('u')
-			->from(User::class, 'u')
-			->where('u.deletedAt IS NULL');
+			->from(User::class, 'u');
 	}
 
 	public function getById(int $id): ?User
 	{
-		$user = $this->em->getRepository(User::class)->find($id);
-
-		if ($user !== null && $user->getDeletedAt() !== null) {
-			return null;
-		}
-
-		return $user;
+		return $this->em->getRepository(User::class)->find($id);
 	}
 
 	/** @param array<string, mixed> $data */
@@ -113,11 +102,12 @@ class UserManager
 		$this->em->flush();
 	}
 
+	/** Hard delete — audit references to the user (created_by/edited_by) become NULL (FK ON DELETE SET NULL); login_logs stay. */
 	public function delete(int $id): void
 	{
 		$user = $this->getById($id);
 		if ($user) {
-			$user->setDeletedAt(new \DateTime());
+			$this->em->remove($user);
 			$this->em->flush();
 		}
 	}

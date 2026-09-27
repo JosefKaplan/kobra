@@ -18,7 +18,7 @@
 	</div>
 	<div class="dropdown">
 		<button class="btn btn-success btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown"
-		        {if count($component->getActiveChildren()) >= 4}disabled title="Nejvýše 4 sloupce"{/if}>
+		        {if count($component->getOrderedChildren()) >= 4}disabled title="Nejvýše 4 sloupce"{/if}>
 			<i class="bi bi-plus-lg me-1"></i>Přidat sloupec
 		</button>
 		<ul class="dropdown-menu dropdown-menu-end">
@@ -54,7 +54,7 @@
 </p>
 
 <div class="row g-3">
-	{foreach $component->getActiveChildren() as $child}
+	{foreach $component->getOrderedChildren() as $child}
 		<div class="col-md">
 			<div id="component-{$child->getId()}" class="card shadow-sm component-card h-100" data-type="{$child->getType()}">
 				<div class="card-header d-flex align-items-center justify-content-between py-2">
@@ -68,7 +68,7 @@
 	{/foreach}
 </div>
 
-<div n:if="!count($component->getActiveChildren())" class="text-center py-5 text-muted border rounded-3 bg-light">
+<div n:if="!count($component->getOrderedChildren())" class="text-center py-5 text-muted border rounded-3 bg-light">
 	<i class="bi bi-layout-three-columns fs-1 d-block mb-2 opacity-25"></i>
 	<p class="mb-0">Zatím žádné sloupce.</p>
 	<p class="small">Přidejte první tlačítkem <strong>Přidat sloupec</strong> výše.</p>

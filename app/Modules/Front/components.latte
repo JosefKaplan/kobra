@@ -40,7 +40,7 @@
 		</figure>
 
 	{case 'masonry'}
-		{var $tiles = array_filter($component->getActiveChildren(), fn (App\Entity\PageComponent $t) => $t->isVisible() && trim($t->getContent()['main_image_url'] ?? '') !== '')}
+		{var $tiles = array_filter($component->getOrderedChildren(), fn (App\Entity\PageComponent $t) => $t->isVisible() && trim($t->getContent()['main_image_url'] ?? '') !== '')}
 		<div n:if="count($tiles)" class="page-masonry mb-4" n:attr="style: $spacingStyle">
 			{foreach $tiles as $tile}
 				{include renderComponent, component: $tile}
@@ -64,7 +64,7 @@
 
 	{case 'columns'}
 		<div class="row g-4 mb-4" n:attr="style: $spacingStyle">
-			{foreach $component->getActiveChildren() as $child}
+			{foreach $component->getOrderedChildren() as $child}
 				{continueIf !$child->isVisible()}
 				<div class="col-md">
 					{include renderComponent, component: $child}
@@ -198,7 +198,7 @@
 							<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 							<div n:if="$heading !== '' || $text !== ''" class="book-caption">
 								<h3 n:if="$heading !== ''" class="h5">{$heading}</h3>
-								<p n:if="$text !== ''">{$text|breakLines}</p>
+								<div n:if="$text !== ''" class="rich-text">{$text|noescape}</div>
 							</div>
 						</div>
 						<div n:if="count($gallery)" class="book-gallery">
@@ -207,9 +207,10 @@
 								<div class="book-gallery-col">
 									{foreach $gallery as $g}
 										{continueIf $iterator->counter0 % $galleryCols !== $col}
-										{* a click swaps the photo with the main one (assets/front/masonry.js); --i drives the staggered fade-in in _layout.scss *}
-										<button type="button" class="book-thumb" aria-label="Zobrazit ve velkém">
-											<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy" style="--i: {$iterator->counter0}">
+										{* a click swaps the photo with the main one (assets/front/masonry.js); --i is the admin order —
+										   it drives the staggered fade-in and, on phones, the grid order (_layout.scss) *}
+										<button type="button" class="book-thumb" aria-label="Zobrazit ve velkém" style="--i: {$iterator->counter0}">
+											<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy">
 										</button>
 									{/foreach}
 								</div>

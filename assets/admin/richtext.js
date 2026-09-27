@@ -15,7 +15,7 @@ export function initRichText(scope = document) {
         textarea.hidden = true;
 
         const quill = new Quill(editorContainer, {
-            theme: 'snow', modules: {
+            theme: 'snow', placeholder: textarea.placeholder, modules: {
                 toolbar: [['bold', 'italic', 'underline', 'strike'], ['link'], [{list: 'ordered'}, {list: 'bullet'}], ['blockquote'], ['clean'],],
             }, formats: ['bold', 'italic', 'underline', 'strike', 'link', 'list', 'blockquote'],
         });
