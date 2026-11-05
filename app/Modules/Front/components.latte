@@ -48,8 +48,8 @@
 		</div>
 
 		{var $tileList = array_values($tiles)}
-		{foreach $tileList as $i => $tile}
-			{include masonryItemModal, component: $tile, prev: $tileList[($i - 1 + count($tileList)) % count($tileList)], next: $tileList[($i + 1) % count($tileList)]}
+		{foreach $tileList as $tile}
+			{include masonryItemModal, component: $tile, prev: $tileList[($iterator->counter0 - 1 + count($tileList)) % count($tileList)], next: $tileList[($iterator->counter0 + 1) % count($tileList)]}
 		{/foreach}
 
 	{case 'masonry_item'}
@@ -108,7 +108,7 @@
 		{var $addresses = array_filter([
 			['title' => 'Studio', 'icon' => 'geo-alt', 'text' => trim($componentContent['studio_address'] ?? '')],
 			['title' => 'Sídlo a fakturační adresa', 'icon' => 'buildings', 'text' => trim($componentContent['billing_address'] ?? '')],
-		], fn ($a) => $a['text'] !== '')}
+		], fn (array $address): bool => $address['text'] !== '')}
 		{var $company = trim($componentContent['company'] ?? '')}
 		{var $companyIds = implode(' · ', array_filter([
 			trim($componentContent['ico'] ?? '') !== '' ? 'IČ ' . trim($componentContent['ico']) : '',

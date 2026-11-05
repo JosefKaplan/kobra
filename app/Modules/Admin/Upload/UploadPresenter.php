@@ -37,12 +37,15 @@ class UploadPresenter extends BasePresenter
 	public function renderDefault(): void
 	{
 		$files = $this->files();
+		$counts = array_count_values(array_column($files, 'status'));
 		$this->template->total = count($files);
 		$this->template->totalSize = UploadBrowser::formatSize(array_sum(array_column($files, 'size')));
-		$this->template->counts = array_count_values(array_column($files, 'status'));
+		$this->template->statusBadges = array_map(
+			fn (string $status, string $label): array => ['label' => $label, 'color' => self::STATUS_BADGES[$status], 'count' => $counts[$status] ?? 0],
+			array_keys(UploadBrowser::STATUSES),
+			UploadBrowser::STATUSES,
+		);
 		$this->template->thumbsMissing = count(array_filter(array_column($files, 'thumbMissing')));
-		$this->template->statuses = UploadBrowser::STATUSES;
-		$this->template->badges = self::STATUS_BADGES;
 	}
 
 	/**

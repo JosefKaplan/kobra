@@ -1,4 +1,8 @@
 {layout '../@layout.latte'}
+{varType int $total}
+{varType string $totalSize}
+{varType array $statusBadges}
+{varType int $thumbsMissing}
 
 {block title}Obrázky{/block}
 
@@ -18,8 +22,8 @@
 {snippet summary}
 	<div class="d-flex flex-wrap gap-2 mb-3">
 		<span class="badge text-bg-dark">Celkem: {$total} ({$totalSize})</span>
-		{foreach $statuses as $status => $label}
-			<span class="badge text-bg-{$badges[$status]}">{$label}: {$counts[$status] ?? 0}</span>
+		{foreach $statusBadges as $badge}
+			<span class="badge text-bg-{$badge['color']}">{$badge['label']}: {$badge['count']}</span>
 		{/foreach}
 		<span n:if="$thumbsMissing > 0" class="badge text-bg-secondary" title="Web u nich zobrazuje originál. Lokálně spusťte app:generate-thumbs a nahrajte www/thumbs/.">Bez náhledu: {$thumbsMissing}</span>
 	</div>
