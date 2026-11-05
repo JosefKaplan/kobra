@@ -100,10 +100,10 @@
 						{var $slideLink = trim($slide['link_url'] ?? '')}
 						{* every repeat after the first is presentational only — hidden from assistive tech *}
 						<a n:if="$slideLink !== ''" href="{$slideLink}" class="footer-carousel-item" n:attr="aria-hidden: $copy > 0 ? 'true' : null, tabindex: $copy > 0 ? '-1' : null">
-							<img src="{$slide['image_url']}" alt="{$slide['alt'] ?? ''}" loading="lazy">
+							<img src="{$slide['image_url']|thumb}" alt="{$slide['alt'] ?? ''}" loading="lazy">
 						</a>
 						<div n:if="$slideLink === ''" class="footer-carousel-item" n:attr="aria-hidden: $copy > 0 ? 'true' : null">
-							<img src="{$slide['image_url']}" alt="{$slide['alt'] ?? ''}" loading="lazy">
+							<img src="{$slide['image_url']|thumb}" alt="{$slide['alt'] ?? ''}" loading="lazy">
 						</div>
 					{/foreach}
 				{/for}

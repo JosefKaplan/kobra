@@ -46,7 +46,11 @@ export function initMasonryBooks() {
 	});
 
 	// mini gallery: a clicked gallery photo swaps places with the main one (nothing gets lost,
-	// the previous main photo becomes a thumbnail); each photo remembers its original src/alt
+	// the previous main photo becomes a thumbnail); each photo remembers its original URLs/alt.
+	// The main spot always shows the full image, the gallery its data-thumb: the main image's
+	// size comes from the file itself, so a thumbnail there would make the layout jump.
+	const show = (img) => img.setAttribute('src', img.closest('.book-main') ? img.dataset.full : img.dataset.thumb);
+
 	const replay = (img) => {
 		img.classList.remove('book-swap');
 		void img.offsetWidth; // restart the fade-in animation
@@ -65,14 +69,19 @@ export function initMasonryBooks() {
 			box.style.setProperty('--book-main-w', `${box.getBoundingClientRect().width}px`);
 		}
 		for (const el of [main, img]) {
-			el.dataset.origSrc ??= el.getAttribute('src');
+			el.dataset.origFull ??= el.dataset.full;
+			el.dataset.origThumb ??= el.dataset.thumb;
 			el.dataset.origAlt ??= el.getAttribute('alt') ?? '';
 		}
-		const [src, alt] = [main.getAttribute('src'), main.getAttribute('alt')];
-		main.setAttribute('src', img.getAttribute('src'));
+		const [full, thumbUrl, alt] = [main.dataset.full, main.dataset.thumb, main.getAttribute('alt')];
+		main.dataset.full = img.dataset.full;
+		main.dataset.thumb = img.dataset.thumb;
 		main.setAttribute('alt', img.getAttribute('alt'));
-		img.setAttribute('src', src);
+		img.dataset.full = full;
+		img.dataset.thumb = thumbUrl;
 		img.setAttribute('alt', alt);
+		show(main);
+		show(img);
 		replay(main);
 		replay(img);
 		// on phones the main photo sits above the gallery, possibly scrolled away — scroll only
@@ -85,10 +94,13 @@ export function initMasonryBooks() {
 	document.addEventListener('hidden.bs.modal', (e) => {
 		if (!e.target.classList.contains('masonry-book-modal')) return;
 		e.target.querySelector('.book-main')?.style.removeProperty('--book-main-w');
-		e.target.querySelectorAll('img[data-orig-src]').forEach((img) => {
-			img.setAttribute('src', img.dataset.origSrc);
+		e.target.querySelectorAll('img[data-orig-full]').forEach((img) => {
+			img.dataset.full = img.dataset.origFull;
+			img.dataset.thumb = img.dataset.origThumb;
 			img.setAttribute('alt', img.dataset.origAlt);
-			delete img.dataset.origSrc;
+			show(img);
+			delete img.dataset.origFull;
+			delete img.dataset.origThumb;
 			delete img.dataset.origAlt;
 			img.classList.remove('book-swap');
 		});

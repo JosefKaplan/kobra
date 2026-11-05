@@ -19,15 +19,7 @@ class MenuPresenter extends BasePresenter
 	#[Inject]
 	public MenuManager $menuManager;
 
-	protected function startup(): void
-	{
-		parent::startup();
-
-		if (!$this->getUser()->isInRole('admin')) {
-			$this->flashMessage(FormHelper::ERR_ACCESS_DENIED, 'danger');
-			$this->redirect(':Admin:User:default');
-		}
-	}
+	protected bool $adminOnly = true;
 
 	/**
 	 * @throws DatagridException

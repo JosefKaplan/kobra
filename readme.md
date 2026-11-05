@@ -153,7 +153,7 @@ server {
 Ujistěte se, že webserver má právo zápisu do složek:
 
 ```bash
-chmod -R 775 temp/ log/ www/uploads/
+chmod -R 775 temp/ log/ www/uploads/ www/thumbs/
 ```
 
 > `temp/sessions/` a `www/uploads/` jsou v repu jen jako `.gitkeep` (obsah ignorován) –

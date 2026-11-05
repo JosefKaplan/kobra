@@ -41,10 +41,13 @@ assets:
 		default:
 			type: vite
 			path: assets
+		thumbs: thumbs   # Thumbnailer::urlFor() — www/thumbs/ with ?v=<file time>
 
 
 latte:
 	strictParsing: yes
+	extensions:
+		- App\Helpers\ThumbnailLatteExtension
 
 
 di:

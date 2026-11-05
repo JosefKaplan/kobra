@@ -13,7 +13,7 @@ Stav k červenci 2026 — ceny a verze PHP u hostingů si před rozhodnutím ov�
 | MariaDB 10.6+ | databáze `kobra` (název lze změnit v configu); doporučeno 10.11 LTS | používá `pdo_mysql` a `mysql:` DSN – MariaDB mluví MySQL protokolem. Nastav `parameters.database.serverVersion` na reálnou verzi (`SELECT VERSION()`), např. `10.11.11-MariaDB` – suffix `-MariaDB` přepne Doctrine na MariaDBPlatform. MySQL 8 funguje taky (`serverVersion: '8.0'`). |
 | Apache + mod_rewrite | `www/.htaccess` už je připravený (front controller pattern) | nginx jde taky, ale vyžaduje vlastní konfiguraci |
 | Document root → `www/` | **jediný záludný bod na sdíleném hostingu** — viz krok 5.4 | kód aplikace (`app/`, `config/`, `vendor/`…) nesmí být veřejně dostupný |
-| Zapisovatelné `temp/`, `log/` a `www/uploads/` | DI kontejner, cache Latte, Tracy logy, sessions, nahrané obrázky | `chmod 777` (sdílený hosting) nebo `www-data` vlastník (VPS). `temp/sessions/` i `www/uploads/` jsou v repu jen jako `.gitkeep` – Nette/git je samy nezaloží; bez zápisu do `temp/sessions/` shodí "Failed to read session data", bez zápisu do `www/uploads/` selže každý upload |
+| Zapisovatelné `temp/`, `log/`, `www/uploads/` a `www/thumbs/` | DI kontejner, cache Latte, Tracy logy, sessions, nahrané obrázky a jejich náhledy | `chmod 777` (sdílený hosting) nebo `www-data` vlastník (VPS). `temp/sessions/` i `www/uploads/` jsou v repu jen jako `.gitkeep` – Nette/git je samy nezaloží; bez zápisu do `temp/sessions/` shodí "Failed to read session data", bez zápisu do `www/uploads/` selže každý upload |
 | Composer **lokálně** | `vendor/` (~44 MB) se buildí na tvém stroji a nahrává se | na serveru Composer potřeba není |
 | Node.js **lokálně** | `npm run build` → `www/assets/` se nahrává hotové | na serveru Node potřeba není — Vite je jen build tool |
 | CLI přístup k DB | migrace: `php bin/console migrations:migrate` | jde spustit i lokálně proti vzdálené DB (viz 5.5) — SSH není nutné |
@@ -140,6 +140,8 @@ log/            ← stačí prázdný adresář
 
 **Nenahrávej:** `node_modules/`, `.git/`, `.idea/`, `phpstan.neon`, `package*.json`, `vite.config.ts`, `assets/` (zdrojáky Sass/JS — na serveru jsou k ničemu).
 
+**Obrázky** (`www/uploads/2026/…` a `www/thumbs/2026/…`) zatím nech být, přijdou na řadu až po migraci — viz 5.5.
+
 Nastav zapisovatelnost `temp/` a `log/` (přes SFTP klienta: práva 775, případně 777 pokud PHP běží pod jiným uživatelem).
 
 ### 5.4 Document root → `www/`
@@ -173,11 +175,21 @@ php bin/console migrations:migrate --no-interaction
 # … a vrať local.neon zpět na lokální DB (a znovu smaž cache)
 ```
 
-Migrace zároveň naseeduje výchozí účet `admin`/`Admin123`.
+Migrace zároveň naseeduje výchozí účet `admin`/`Admin123` a do prázdné databáze vloží obsah webu.
 
-**Před migrací na produkci vždy zálohuj DB** (export přes phpMyAdmin / `mysqldump`) — migrace
-`Version20260927141706` natrvalo odstraní dříve „smazané" (soft-deleted) řádky. Jejich obrázky
-na serveru pak smaže admin při první návštěvě (migrace běží z lokálu, na soubory serveru nedosáhne).
+**Obsah a obrázky.** `Version20261030120000` přenáší lokální obsah (stránky, navigace, patičky, menu,
+evidenci obrázků) z `migrations/data/content-snapshot.json`; samotné obrázky se nahrávají přes FTP.
+Celý postup je v docblocku té migrace, ve zkratce:
+
+1. lokálně dočistit obsah a spustit `php bin/console app:export-content`, který vygeneruje i chybějící náhledy (po každé změně obsahu znovu; dokud Obrázky ukazují chybějící, nepoužité nebo cizí soubory, nic nezapíše),
+2. spustit migrace proti produkční DB (výše) a ve výpisu zkontrolovat, že seed není `skipped`,
+3. až potom nahrát obsah `www/uploads/` a `www/thumbs/` přes FTP a nastavit práva složek,
+4. v Administrace → Obrázky ověřit, že „Chybí soubor“ je 0.
+
+**Pořadí je důležité:** do administrace se nesmí vstoupit dřív, než je obsah v DB. Denní úklid obrázků
+by smazal všechny už nahrané soubory starší než 24 hodin, protože na ně nic neodkazuje.
+
+**Před migrací na produkci vždy zálohuj DB** (export přes phpMyAdmin / `mysqldump`).
 
 Pokud hosting vzdálený přístup k DB nemá: exportuj lokální schéma (`mysqldump kobra > dump.sql` z čerstvě zmigrované lokální DB; `mysqldump` funguje i pro MariaDB) a naimportuj přes phpMyAdmin hostingu.
 
@@ -237,6 +249,12 @@ CMS umí nahrávání obrázků (drag & drop / výběr souboru u `hero`, `image`
   obrázky (soubor v `www/uploads/` i řádek v `uploads`), jakmile na ně nic jiného neodkazuje.
   Obrázky nahrané, ale nikdy neuložené do obsahu, uklidí admin sám jednou denně (starší než 24 h)
   — cron k tomu potřeba není. Smazané nejde vrátit, proto zálohuj DB i `www/uploads/`.
+- Náhledy (`www/thumbs/`, kratší strana 960 px) vznikají při uploadu; na hostingu bez SSH se pro stávající
+  obrázky generují lokálně (`php bin/console app:generate-thumbs`) a nahrají přes FTP. Když náhled chybí, web
+  zobrazí originál. Obrázek příliš velký pro `memory_limit` serveru se při uploadu přeskočí a zapíše do logu.
+- Přehled všeho, co na serveru leží, je v Administrace → Obrázky: kde se který obrázek používá, co je
+  nepoužité nebo jen ve skrytém obsahu, co v DB je, ale chybí na disku, a co na disk přibylo mimo
+  administraci (např. omylem přes FTP).
 
 ---
 

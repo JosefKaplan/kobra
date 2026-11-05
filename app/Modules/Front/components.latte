@@ -59,7 +59,7 @@
 		<button n:if="$mainImage !== ''" type="button" class="page-masonry-item ratio ratio-1x1"
 		        data-bs-toggle="modal" data-bs-target="#{$modalId}"
 		        aria-label="{$heading !== '' ? $heading : 'Zobrazit detail'}">
-			<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+			<img src="{$mainImage|thumb}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 		</button>
 
 	{case 'columns'}
@@ -195,7 +195,7 @@
 					</button>
 					<div class="book-body" style="--gallery-cols: {$galleryCols}">
 						<div class="book-main">
-							<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+							<img src="{$mainImage}" data-full="{$mainImage|checkUrl}" data-thumb="{$mainImage|thumb|checkUrl}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 							<div n:if="$heading !== '' || $text !== ''" class="book-caption">
 								<h3 n:if="$heading !== ''" class="h5">{$heading}</h3>
 								<div n:if="$text !== ''" class="rich-text">{$text|noescape}</div>
@@ -210,7 +210,7 @@
 										{* a click swaps the photo with the main one (assets/front/masonry.js); --i is the admin order —
 										   it drives the staggered fade-in and, on phones, the grid order (_layout.scss) *}
 										<button type="button" class="book-thumb" aria-label="Zobrazit ve velkém" style="--i: {$iterator->counter0}">
-											<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy">
+											<img src="{$g['image_url']|thumb}" data-full="{$g['image_url']|checkUrl}" data-thumb="{$g['image_url']|thumb|checkUrl}" alt="{$g['alt'] ?? ''}" loading="lazy">
 										</button>
 									{/foreach}
 								</div>

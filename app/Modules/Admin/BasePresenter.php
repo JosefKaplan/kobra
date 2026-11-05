@@ -2,6 +2,7 @@
 
 namespace App\Modules\Admin;
 
+use App\Helpers\FormHelper;
 use App\Helpers\ImageUploadException;
 use App\Helpers\ImageUploader;
 use App\Models\UploadCleaner;
@@ -22,12 +23,20 @@ abstract class BasePresenter extends Presenter
 	#[Inject]
 	public UploadCleaner $uploadCleaner;
 
+	/** Set in presenters only admins may use; a plain user gets sent to the user list (their own profile). */
+	protected bool $adminOnly = false;
+
 	protected function startup(): void
 	{
 		parent::startup();
 
 		if (!$this->getUser()->isLoggedIn()) {
 			$this->redirect(':Front:Auth:login', ['backlink' => $this->storeRequest()]);
+		}
+
+		if ($this->adminOnly && !$this->getUser()->isInRole('admin')) {
+			$this->flashMessage(FormHelper::ERR_ACCESS_DENIED, 'danger');
+			$this->redirect(':Admin:User:default');
 		}
 
 		// no cron on the hosting — uploads never saved into content get cleared from here, once a day
@@ -49,7 +58,7 @@ abstract class BasePresenter extends Presenter
 		if (!$file instanceof FileUpload) {
 			// over post_max_size PHP drops $_FILES and $_POST entirely — say so instead of "no file sent"
 			$contentLength = (int) ($this->getHttpRequest()->getHeader('Content-Length') ?? 0);
-			$postMax = self::iniBytes((string) ini_get('post_max_size'));
+			$postMax = ini_parse_quantity((string) ini_get('post_max_size'));
 			if ($postMax > 0 && $contentLength > $postMax) {
 				$this->sendJson(['error' => 'Soubor je příliš velký pro aktuální nastavení serveru (post_max_size v php.ini).']);
 			}
@@ -63,23 +72,6 @@ abstract class BasePresenter extends Presenter
 		}
 
 		$this->sendJson(['url' => $upload->getUrl()]);
-	}
-
-	/** php.ini shorthand ("8M", "512K", "1G", plain bytes) to bytes; 0 for empty/unlimited. */
-	protected static function iniBytes(string $value): int
-	{
-		$value = trim($value);
-		if ($value === '' || $value === '-1') {
-			return 0;
-		}
-		$unit = strtolower(substr($value, -1));
-		$number = (int) $value;
-		return match ($unit) {
-			'g' => $number * 1024 * 1024 * 1024,
-			'm' => $number * 1024 * 1024,
-			'k' => $number * 1024,
-			default => $number,
-		};
 	}
 
 	/** CSRF guard for the raw (non-Nette-Form) POST/GET signals of the admin. */

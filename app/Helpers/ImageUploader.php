@@ -22,6 +22,7 @@ class ImageUploader
     public function __construct(
         private readonly string $uploadsDir,
         private readonly UploadManager $uploadManager,
+        private readonly Thumbnailer $thumbnailer,
     ) {
     }
 
@@ -69,6 +70,8 @@ class ImageUploader
             @unlink($this->uploadsDir . '/' . $relativePath);
             throw new ImageUploadException('Uložení souboru se nezdařilo.', previous: $e);
         }
+
+        $this->thumbnailer->generate($relativePath);
 
         return $upload;
     }

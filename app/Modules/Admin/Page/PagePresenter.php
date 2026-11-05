@@ -64,15 +64,7 @@ class PagePresenter extends BasePresenter
 	#[Inject]
 	public LayoutBlockManager $layoutBlockManager;
 
-	protected function startup(): void
-	{
-		parent::startup();
-
-		if (!$this->getUser()->isInRole('admin')) {
-			$this->flashMessage(FormHelper::ERR_ACCESS_DENIED, 'danger');
-			$this->redirect(':Admin:User:default');
-		}
-	}
+	protected bool $adminOnly = true;
 
 	public function renderDefault(): void
 	{
