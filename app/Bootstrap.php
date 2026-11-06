@@ -36,10 +36,6 @@ class Bootstrap
 	{
 		//$this->configurator->setDebugMode('secret@23.75.345.200'); // zapnout pro remote IP
 		$this->configurator->enableTracy($this->rootDir . '/log');
-
-		$this->configurator->createRobotLoader()
-			->addDirectory(__DIR__)
-			->register();
 	}
 
 

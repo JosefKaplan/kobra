@@ -1,5 +1,4 @@
 {varType App\Entity\Page $page}
-{varType App\Helpers\FlashMessage[] $flashes}
 {varType ?App\Entity\LayoutBlock $navBlock}
 
 <!DOCTYPE html>
@@ -75,7 +74,6 @@
 		<main n:class="$navStudio ? 'pt-0 pb-5' : 'py-5'">
 			<div class="container">
 				{foreach $flashes as $flash}
-					{varType App\Helpers\FlashMessage $flash}
 					<div class="alert alert-{$flash->type} alert-dismissible fade show mb-4" role="alert">
 						{$flash->message}
 						<button type="button" class="btn-close" data-bs-dismiss="alert"></button>

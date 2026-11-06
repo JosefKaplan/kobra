@@ -7,6 +7,7 @@ namespace App\Helpers;
 use HTMLPurifier;
 use HTMLPurifier_AttrDef_Enum;
 use HTMLPurifier_Config;
+use Nette\Utils\FileSystem;
 
 /**
  * Sanitizes HTML posted from the Quill rich-text editor before it is persisted.
@@ -36,9 +37,7 @@ final class RichTextSanitizer
 			return $this->purifier;
 		}
 
-		if (!is_dir($this->cacheDir)) {
-			mkdir($this->cacheDir, recursive: true);
-		}
+		FileSystem::createDir($this->cacheDir);
 
 		$config = HTMLPurifier_Config::createDefault();
 		$config->set('Core.Encoding', 'UTF-8');

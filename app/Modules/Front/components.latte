@@ -2,8 +2,8 @@
 
 {define renderComponent, App\Entity\PageComponent $component}
 	{var $componentContent = $component->getContent()}
-	{var $spacingTopLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingTop() ?? ''] ?? null}
-	{var $spacingBottomLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingBottom() ?? ''] ?? null}
+	{var $spacingTopLength = \App\Entity\PageComponent::SPACING_OPTIONS[$component->getSpacingTop() ?? '']['css'] ?? null}
+	{var $spacingBottomLength = \App\Entity\PageComponent::SPACING_OPTIONS[$component->getSpacingBottom() ?? '']['css'] ?? null}
 	{var $spacingStyle = trim(
 		($spacingTopLength !== null ? 'margin-top: ' . $spacingTopLength . '; ' : '')
 		. ($spacingBottomLength !== null ? 'margin-bottom: ' . $spacingBottomLength : '')

@@ -15,9 +15,13 @@ use App\Modules\Admin\BasePresenter;
 use Contributte\Datagrid\Column\Action\Confirmation\StringConfirmation;
 use Contributte\Datagrid\Datagrid;
 use Contributte\Datagrid\Exception\DatagridException;
+use Nette\Application\BadRequestException;
 use Nette\Application\UI\Form;
 use Nette\DI\Attributes\Inject;
 use Nette\Http\IResponse;
+use Nette\Schema\Elements\Structure;
+use Nette\Schema\Expect;
+use Nette\Schema\Schema;
 use Nette\Utils\Strings;
 
 class PagePresenter extends BasePresenter
@@ -51,6 +55,12 @@ class PagePresenter extends BasePresenter
 	private const BULK_IMAGE_CHILDREN = [
 		'masonry' => ['child' => 'masonry_item', 'urlKey' => 'main_image_url', 'one' => 'Dlaždice přidána.', 'many' => 'Přidáno dlaždic: %d.'],
 	];
+
+	// Options of the editor's selects (value => label; the first is the default): contentSchema() accepts
+	// exactly these values and _componentEditor.latte lists them, so the two can't drift apart.
+	public const HEADING_LEVELS = ['h2' => 'H2 – Hlavní nadpis', 'h3' => 'H3 – Podnadpis', 'h4' => 'H4 – Menší nadpis', 'h5' => 'H5 – Malý nadpis'];
+	public const HEADING_ALIGNMENTS = ['start' => 'Vlevo', 'center' => 'Na střed', 'end' => 'Vpravo'];
+	public const BUTTON_STYLES = ['primary' => 'Primary', 'secondary' => 'Secondary', 'outline-primary' => 'Outline Primary', 'outline-secondary' => 'Outline Secondary'];
 
 	#[Inject]
 	public PageManager $pageManager;
@@ -281,8 +291,6 @@ class PagePresenter extends BasePresenter
 
 	public function handleAddComponent(int $pageId, string $type, ?int $parentId = null): void
 	{
-		$this->checkSameSiteRequest();
-
 		$page = $this->pageManager->getById($pageId);
 		if (!$page) $this->error('Stránka nenalezena.');
 
@@ -304,7 +312,7 @@ class PagePresenter extends BasePresenter
 			$this->error('Tento typ bloku lze vložit jen do nadřazené komponenty.', IResponse::S400_BadRequest);
 		}
 
-		$this->persistNewComponent($page, $parent, $type, self::defaultContent($type));
+		$this->persistNewComponent($page, $parent, $type, $this->defaultContent($type));
 
 		$this->flashMessage('Komponenta přidána.', 'success');
 		$this->redirect('this');
@@ -324,7 +332,6 @@ class PagePresenter extends BasePresenter
 
 	private function createChildrenFromUploads(int $parentId, string $parentType): void
 	{
-		$this->checkSameSiteRequest();
 		$bulk = self::BULK_IMAGE_CHILDREN[$parentType];
 
 		$parent = $this->pageManager->getComponentById($parentId);
@@ -333,14 +340,21 @@ class PagePresenter extends BasePresenter
 		}
 
 		$post = $this->getHttpRequest()->getPost();
-		$urls = array_values(array_filter(array_map(
-			fn ($url) => trim((string) $url),
-			is_array($post['urls'] ?? null) ? $post['urls'] : [],
-		), fn (string $url) => $url !== ''));
+		$nonEmpty = fn (array $values): array => array_values(array_filter($values, fn (string $value): bool => $value !== ''));
+		$urls = $this->processPostedData(Expect::listOf(self::trimmedString())->transform($nonEmpty), $post['urls'] ?? []);
+		// Files the browser couldn't upload (wrong type, too big, server error) — re-shown here because
+		// the redirect below would otherwise replace the page the dropzone reported them on.
+		// Validated with the URLs, before anything is saved: a rejected request must create no tiles.
+		$failed = $this->processPostedData(
+			Expect::listOf(self::trimmedString()->transform(fn (string $message): string => Strings::truncate($message, 200)))
+				->transform(fn (array $messages): array => $nonEmpty(array_slice($messages, 0, 20))),
+			$post['failed'] ?? [],
+		);
 
+		$defaults = $this->defaultContent($bulk['child']);
 		// newest-first container: created back to front, so the batch reads in upload order at the top
 		foreach ($parent->isNewestFirst() ? array_reverse($urls) : $urls as $url) {
-			$content = self::defaultContent($bulk['child']);
+			$content = $defaults;
 			$content[$bulk['urlKey']] = $url;
 			// One flush for the whole batch (below): all-or-nothing, and no per-child changeset pass
 			$this->persistNewComponent($parent->getPage(), $parent, $bulk['child'], $content, flush: false);
@@ -349,12 +363,6 @@ class PagePresenter extends BasePresenter
 			$this->pageManager->save($parent->getPage());
 			$this->flashMessage(count($urls) === 1 ? $bulk['one'] : sprintf($bulk['many'], count($urls)), 'success');
 		}
-		// Files the browser couldn't upload (wrong type, too big, server error) — re-shown here because
-		// the redirect below would otherwise replace the page the dropzone reported them on.
-		$failed = array_values(array_filter(array_map(
-			fn ($message) => Strings::truncate(trim((string) $message), 200),
-			is_array($post['failed'] ?? null) ? array_slice($post['failed'], 0, 20) : [],
-		), fn (string $message) => $message !== ''));
 		if ($failed !== []) {
 			$this->flashMessage('Nepodařilo se nahrát: ' . implode(' · ', $failed), 'warning');
 		}
@@ -367,22 +375,63 @@ class PagePresenter extends BasePresenter
 		return in_array($type, self::CHILD_ONLY_TYPES, true);
 	}
 
-	/** @return array<string, mixed> */
-	private static function defaultContent(string $type): array
+	/**
+	 * Each type's content keys with their defaults and how a posted value is normalized — the one
+	 * source of a new component's default content (defaultContent()) and of what handleSaveComponent()
+	 * accepts. Plain text is trimmed, rich text sanitized; null for an unknown type.
+	 */
+	private function contentSchema(string $type): ?Structure
 	{
-		return match($type) {
-			'hero'          => ['heading' => '', 'subheading' => '', 'button_text' => '', 'button_url' => '', 'image_url' => ''],
-			'heading'       => ['text' => '', 'level' => 'h2', 'align' => 'start'],
-			'text_block'    => ['content' => ''],
-			'image'         => ['url' => '', 'alt' => '', 'caption' => ''],
-			'columns'       => [],
-			'masonry'       => [],
-			'masonry_item'  => ['main_image_url' => '', 'main_image_alt' => '', 'heading' => '', 'text' => '', 'gallery' => []],
-			'cta'           => ['heading' => '', 'body' => '', 'button_text' => '', 'button_url' => '', 'button_style' => 'primary'],
-			'contact_form'  => ['heading' => '', 'action_url' => '', 'button_text' => 'Odeslat', 'email_placeholder' => 'Váš e-mail…', 'message_placeholder' => 'Vaše zpráva…'],
-			'contact_info'  => array_fill_keys(self::CONTACT_INFO_KEYS, ''),
-			default         => [],
+		$text = self::trimmedString(...);
+		$richText = fn (): Schema => Expect::string('')->transform(fn (string $html): string => $this->richTextSanitizer->sanitize($html));
+		$choice = fn (array $options): Schema => Expect::anyOf(...array_keys($options))->firstIsDefault();
+
+		$fields = match ($type) {
+			'hero'         => ['heading' => $text(), 'subheading' => $text(), 'button_text' => $text(), 'button_url' => $text(), 'image_url' => $text()],
+			'heading'      => [
+				'text'  => $text(),
+				'level' => $choice(self::HEADING_LEVELS),
+				'align' => $choice(self::HEADING_ALIGNMENTS),
+			],
+			'text_block'   => ['content' => $richText()],
+			'image'        => ['url' => $text(), 'alt' => $text(), 'caption' => $text()],
+			'columns', 'masonry' => [],
+			'masonry_item' => [
+				'main_image_url' => $text(),
+				'main_image_alt' => $text(),
+				'heading'        => $text(),
+				'text'           => $richText(),
+				'gallery'        => self::imageListSchema(),
+			],
+			'cta'          => [
+				'heading'      => $text(),
+				'body'         => $richText(),
+				'button_text'  => $text(),
+				'button_url'   => $text(),
+				'button_style' => $choice(self::BUTTON_STYLES),
+			],
+			'contact_form' => [
+				'heading'             => $text(),
+				'action_url'          => $text(),
+				'button_text'         => $text('Odeslat'),
+				'email_placeholder'   => $text('Váš e-mail…'),
+				'message_placeholder' => $text('Vaše zpráva…'),
+			],
+			// all plain text (auto-escaped on render); `social`/`links` are "Text | URL" lines for LinkList
+			'contact_info' => array_fill_keys(self::CONTACT_INFO_KEYS, $text()),
+			default        => null,
 		};
+
+		return $fields !== null ? Expect::structure($fields)->castTo('array') : null;
+	}
+
+	/** @return array<string, mixed> */
+	private function defaultContent(string $type): array
+	{
+		// an unknown type (a tampered or stale link) is never created
+		$schema = $this->contentSchema($type) ?? throw new BadRequestException('Neznámý typ bloku.', IResponse::S400_BadRequest);
+
+		return $this->processPostedData($schema, []);
 	}
 
 	/**
@@ -427,85 +476,29 @@ class PagePresenter extends BasePresenter
 
 	public function handleSaveComponent(int $componentId): void
 	{
-		$this->checkSameSiteRequest();
-
 		$component = $this->pageManager->getComponentById($componentId);
 		if (!$component) {
 			$this->error('Komponenta nenalezena.');
 		}
 
 		$post = $this->getHttpRequest()->getPost();
-		$type = $component->getType();
+		$schema = $this->contentSchema($component->getType());
+		$content = $schema !== null
+			// the form also posts the generic fields below — only the type's own keys go into the content
+			? $this->processPostedData($schema, array_intersect_key($post, $schema->getShape()))
+			: $component->getContent();
 
-		$content = match($type) {
-			'hero' => [
-				'heading'     => $post['heading'] ?? '',
-				'subheading'  => $post['subheading'] ?? '',
-				'button_text' => $post['button_text'] ?? '',
-				'button_url'  => $post['button_url'] ?? '',
-				'image_url'   => $post['image_url'] ?? '',
-			],
-			'heading' => [
-				'text'  => $post['text'] ?? '',
-				'level' => in_array($post['level'] ?? '', ['h2', 'h3', 'h4', 'h5'], true) ? $post['level'] : 'h2',
-				'align' => in_array($post['align'] ?? '', ['start', 'center', 'end'], true) ? $post['align'] : 'start',
-			],
-			'text_block' => [
-				'content' => $this->richTextSanitizer->sanitize($post['content'] ?? ''),
-			],
-			'image' => [
-				'url'     => $post['url'] ?? '',
-				'alt'     => $post['alt'] ?? '',
-				'caption' => $post['caption'] ?? '',
-			],
-			'columns' => [],
-			'masonry' => [],
-			'masonry_item' => [
-				'main_image_url' => trim((string) ($post['main_image_url'] ?? '')),
-				'main_image_alt' => trim((string) ($post['main_image_alt'] ?? '')),
-				'heading'        => trim((string) ($post['heading'] ?? '')),
-				'text'           => $this->richTextSanitizer->sanitize((string) ($post['text'] ?? '')),
-				// Gallery rows arrive as gallery[<index>][image_url|alt] (see masonry.js); indices may
-				// have gaps after row removal, array_values() reindexes them. Their order is the
-				// POST-body order — that's the only place gallery order lives.
-				'gallery'        => array_values(array_filter(array_map(
-					fn ($g) => [
-						'image_url' => trim((string) ($g['image_url'] ?? '')),
-						'alt'       => trim((string) ($g['alt'] ?? '')),
-					],
-					is_array($post['gallery'] ?? null) ? $post['gallery'] : [],
-				), fn (array $g) => $g['image_url'] !== '')),
-			],
-			'cta' => [
-				'heading'      => $post['heading'] ?? '',
-				'body'         => $this->richTextSanitizer->sanitize($post['body'] ?? ''),
-				'button_text'  => $post['button_text'] ?? '',
-				'button_url'   => $post['button_url'] ?? '',
-				'button_style' => in_array($post['button_style'] ?? '', ['primary', 'secondary', 'outline-primary', 'outline-secondary'], true) ? $post['button_style'] : 'primary',
-			],
-			'contact_form' => [
-				'heading'             => $post['heading'] ?? '',
-				'action_url'          => $post['action_url'] ?? '',
-				'button_text'         => $post['button_text'] ?? '',
-				'email_placeholder'   => $post['email_placeholder'] ?? '',
-				'message_placeholder' => $post['message_placeholder'] ?? '',
-			],
-			// all plain text (auto-escaped on render); `social`/`links` are "Text | URL" lines for LinkList
-			'contact_info' => array_map(
-				fn (string $key) => trim((string) ($post[$key] ?? '')),
-				array_combine(self::CONTACT_INFO_KEYS, self::CONTACT_INFO_KEYS),
-			),
-			default => $component->getContent(),
-		};
-
-		// The editor no longer offers a blank "use type default" choice, so any posted value that isn't
-		// one of the four real options (missing field, tampered request, …) falls back to 'sm', not null.
-		$spacingTop = $post['spacingTop'] ?? '';
-		$spacingBottom = $post['spacingBottom'] ?? '';
+		// Generic to every type. A missing value is 'sm', the editor's default — a masonry tile's form has no
+		// spacing selects; never null, since the editor offers no blank "use type default" choice.
+		$spacing = Expect::anyOf(...array_keys(PageComponent::SPACING_OPTIONS))->default('sm');
+		['spacingTop' => $spacingTop, 'spacingBottom' => $spacingBottom] = $this->processPostedData(
+			Expect::structure(['spacingTop' => $spacing, 'spacingBottom' => $spacing])->castTo('array'),
+			array_intersect_key($post, ['spacingTop' => true, 'spacingBottom' => true]),
+		);
 		$component->setContent($content);
 		$component->setIsVisible(isset($post['isVisible']));
-		$component->setSpacingTop(isset(PageComponent::SPACING_VALUES[$spacingTop]) ? $spacingTop : 'sm');
-		$component->setSpacingBottom(isset(PageComponent::SPACING_VALUES[$spacingBottom]) ? $spacingBottom : 'sm');
+		$component->setSpacingTop($spacingTop);
+		$component->setSpacingBottom($spacingBottom);
 		$component->markEdited($this->getUserEntity());
 		$this->pageManager->save($component->getPage());
 
@@ -515,8 +508,6 @@ class PagePresenter extends BasePresenter
 
 	public function handleMoveComponent(int $componentId, string $direction): void
 	{
-		$this->checkSameSiteRequest();
-
 		$offset = match ($direction) {
 			'up'    => -1,
 			'down'  => 1,
@@ -564,8 +555,6 @@ class PagePresenter extends BasePresenter
 
 	public function handleDeleteComponent(int $componentId): void
 	{
-		$this->checkSameSiteRequest();
-
 		$component = $this->pageManager->getComponentById($componentId);
 		if ($component) {
 			// a container takes its children (columns, masonry tiles) with it, images included

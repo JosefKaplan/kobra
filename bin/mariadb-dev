@@ -49,8 +49,18 @@ start() {
 
 stop() {
 	if [ -f "$PIDFILE" ] && "$PREFIX/bin/mysqladmin" --socket="$SOCK" ping >/dev/null 2>&1; then
-		"$PREFIX/bin/mysqladmin" --socket="$SOCK" -u root shutdown
-		echo "mariadb-dev stopped"
+		# SIGTERM is mariadbd's normal clean shutdown and needs no DB login (root has a password,
+		# so `mysqladmin -u root shutdown` is refused); the server removes its pidfile once done
+		kill "$(cat "$PIDFILE")"
+		for _ in $(seq 1 40); do
+			sleep 0.5
+			if [ ! -f "$PIDFILE" ]; then
+				echo "mariadb-dev stopped"
+				return 0
+			fi
+		done
+		echo "mariadb-dev did not stop in time — check $LOGFILE" >&2
+		exit 1
 	else
 		echo "mariadb-dev is not running"
 	fi

@@ -94,8 +94,6 @@ class UploadPresenter extends BasePresenter
 
 	public function handleDelete(string $path): void
 	{
-		$this->checkSameSiteRequest();
-
 		// release() itself re-checks that nothing refers to the image
 		if (UploadCleaner::isUploadPath($path) && $this->uploadCleaner->release([$path]) > 0) {
 			$this->flashMessage('Obrázek smazán.', 'success');
