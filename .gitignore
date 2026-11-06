@@ -4,6 +4,9 @@
 /www/uploads/*
 !/www/uploads/.gitkeep
 !/www/uploads/.htaccess
+/www/thumbs/*
+!/www/thumbs/.gitkeep
+!/www/thumbs/.htaccess
 /config/local.neon
 /temp/cache/
 /temp/sessions/

@@ -1,0 +1,37 @@
+{layout '../@layout.latte'}
+{varType int $total}
+{varType string $totalSize}
+{varType array $statusBadges}
+{varType int $thumbsMissing}
+
+{block title}Obrázky{/block}
+
+{block content}
+<h1 class="h3 mb-4">
+	<i class="bi bi-images me-2 text-primary"></i>Obrázky
+</h1>
+
+<p class="text-muted">
+	Všechno, co leží ve složce <code>www/uploads/</code> nebo na co odkazuje obsah webu.
+	<strong>Nepoužité</strong> obrázky starší než 24 hodin se mažou samy jednou denně. Obrázky
+	<strong>jen ve skrytém obsahu</strong> se samy nesmažou — zmizí, až smažete ten obsah (odkaz vede přímo na něj).
+	<strong>Chybí soubor</strong> znamená, že na obrázek odkazuje obsah nebo databáze, ale na disku není
+	(např. ještě nebyl nahrán přes FTP). <strong>Cizí soubor</strong> neodpovídá ničemu, co vytváří administrace — smažte ho přes FTP.
+</p>
+
+{snippet summary}
+	<div class="d-flex flex-wrap gap-2 mb-3">
+		<span class="badge text-bg-dark">Celkem: {$total} ({$totalSize})</span>
+		{foreach $statusBadges as $badge}
+			<span class="badge text-bg-{$badge['color']}">{$badge['label']}: {$badge['count']}</span>
+		{/foreach}
+		<span n:if="$thumbsMissing > 0" class="badge text-bg-secondary" title="Web u nich zobrazuje originál. Lokálně spusťte app:generate-thumbs a nahrajte www/thumbs/.">Bez náhledu: {$thumbsMissing}</span>
+	</div>
+{/snippet}
+
+<div class="card shadow-sm">
+	<div class="card-body p-0">
+		{control uploadsGrid}
+	</div>
+</div>
+{/block}

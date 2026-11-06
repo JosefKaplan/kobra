@@ -16,12 +16,15 @@ class PageComponent
 {
     use AuditColumns;
 
-    /** Allowed values of $spacingTop/$spacingBottom mapped to the CSS length they override the type's default margin with. */
-    public const SPACING_VALUES = [
-        'none' => '0',
-        'sm'   => '.75rem',
-        'lg'   => '4rem',
-        'xl'   => '6rem',
+    /**
+     * Allowed values of $spacingTop/$spacingBottom, in the order the editor's selects offer them:
+     * the label shown there and the CSS length that overrides the type's default margin.
+     */
+    public const SPACING_OPTIONS = [
+        'none' => ['label' => 'Žádná',       'css' => '0'],
+        'sm'   => ['label' => 'Malá',        'css' => '.75rem'],
+        'lg'   => ['label' => 'Velká',       'css' => '4rem'],
+        'xl'   => ['label' => 'Extra velká', 'css' => '6rem'],
     ];
 
     /** Container types whose children are listed by descending sortOrder (see isNewestFirst()). */
@@ -59,11 +62,11 @@ class PageComponent
     #[ORM\Column(name: 'is_visible', type: 'boolean', options: ['default' => true])]
     private bool $isVisible = true;
 
-    /** Override of the type's built-in top margin; null = use the type default. One of self::SPACING_VALUES. */
+    /** Override of the type's built-in top margin; null = use the type default. One of self::SPACING_OPTIONS. */
     #[ORM\Column(name: 'spacing_top', type: 'string', length: 10, nullable: true)]
     private ?string $spacingTop = null;
 
-    /** Override of the type's built-in bottom margin; null = use the type default. One of self::SPACING_VALUES. */
+    /** Override of the type's built-in bottom margin; null = use the type default. One of self::SPACING_OPTIONS. */
     #[ORM\Column(name: 'spacing_bottom', type: 'string', length: 10, nullable: true)]
     private ?string $spacingBottom = null;
 

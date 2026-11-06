@@ -41,10 +41,13 @@ assets:
 		default:
 			type: vite
 			path: assets
+		thumbs: thumbs   # Thumbnailer::urlFor() — www/thumbs/ with ?v=<file time>
 
 
 latte:
 	strictParsing: yes
+	extensions:
+		- App\Helpers\ThumbnailLatteExtension
 
 
 di:
@@ -53,11 +56,23 @@ di:
 		tags: no
 
 
-# ── Doctrine DBAL ────────────────────────────────────────────────────────────
 extensions:
+	console: Contributte\Console\DI\ConsoleExtension(%consoleMode%)
 	dbal: Nettrine\DBAL\DI\DbalExtension
 	orm: Nettrine\ORM\DI\OrmExtension
 	migrations: Nettrine\Migrations\DI\MigrationsExtension
+
+
+# ── Console (bin/console) ────────────────────────────────────────────────────
+# Commands are services (found by type, loaded lazily — only the one being run is created).
+console:
+	name: Kobra
+	# The CLI has no HTTP request: links and asset URLs built by commands start with this.
+	# Override in config/local.neon if you serve the app elsewhere.
+	url: http://localhost:8000
+
+
+# ── Doctrine DBAL ────────────────────────────────────────────────────────────
 
 
 dbal:

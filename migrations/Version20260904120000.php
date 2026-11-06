@@ -12,7 +12,7 @@ final class Version20260904120000 extends AbstractMigration
     public function getDescription(): string
     {
         return 'Kobra baseline (MariaDB): users, login_logs, pages, page_components, '
-            . 'settings, layout_blocks, menus, layout_block_menus + default admin account';
+            . 'settings, layout_blocks, menus, layout_block_menus, uploads + default admin account';
     }
 
     public function up(Schema $schema): void
@@ -28,7 +28,6 @@ final class Version20260904120000 extends AbstractMigration
                 password VARCHAR(255) NOT NULL,
                 role VARCHAR(10) DEFAULT 'user' NOT NULL,
                 is_active TINYINT(1) DEFAULT 1 NOT NULL,
-                deleted_at DATETIME DEFAULT NULL,
                 UNIQUE INDEX UNIQ_1483A5E9F85E0677 (username),
                 UNIQUE INDEX UNIQ_1483A5E9E7927C74 (email),
                 PRIMARY KEY (id)
@@ -57,17 +56,13 @@ final class Version20260904120000 extends AbstractMigration
                 created_by INT DEFAULT NULL,
                 edited_date DATETIME DEFAULT NULL,
                 edited_by INT DEFAULT NULL,
-                deleted_date DATETIME DEFAULT NULL,
-                deleted_by INT DEFAULT NULL,
                 INDEX IDX_B5D582BEDE12AB56 (created_by),
                 INDEX IDX_B5D582BED6A509BC (edited_by),
-                INDEX IDX_B5D582BE1F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE layout_blocks ADD CONSTRAINT FK_B5D582BEDE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE layout_blocks ADD CONSTRAINT FK_B5D582BED6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
-        $this->addSql('ALTER TABLE layout_blocks ADD CONSTRAINT FK_B5D582BE1F6FA0AF FOREIGN KEY (deleted_by) REFERENCES users (id) ON DELETE SET NULL');
 
         $this->addSql(<<<'SQL'
             CREATE TABLE pages (
@@ -81,14 +76,11 @@ final class Version20260904120000 extends AbstractMigration
                 created_by INT DEFAULT NULL,
                 edited_date DATETIME DEFAULT NULL,
                 edited_by INT DEFAULT NULL,
-                deleted_date DATETIME DEFAULT NULL,
-                deleted_by INT DEFAULT NULL,
                 UNIQUE INDEX UNIQ_2074E57536AC99F1 (link),
                 INDEX IDX_2074E575F19F169C (nav_block_id),
                 INDEX IDX_2074E575918AA0D4 (footer_block_id),
                 INDEX IDX_2074E575DE12AB56 (created_by),
                 INDEX IDX_2074E575D6A509BC (edited_by),
-                INDEX IDX_2074E5751F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
@@ -96,7 +88,6 @@ final class Version20260904120000 extends AbstractMigration
         $this->addSql('ALTER TABLE pages ADD CONSTRAINT FK_2074E575918AA0D4 FOREIGN KEY (footer_block_id) REFERENCES layout_blocks (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE pages ADD CONSTRAINT FK_2074E575DE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE pages ADD CONSTRAINT FK_2074E575D6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
-        $this->addSql('ALTER TABLE pages ADD CONSTRAINT FK_2074E5751F6FA0AF FOREIGN KEY (deleted_by) REFERENCES users (id) ON DELETE SET NULL');
 
         $this->addSql(<<<'SQL'
             CREATE TABLE page_components (
@@ -113,21 +104,17 @@ final class Version20260904120000 extends AbstractMigration
                 created_by INT DEFAULT NULL,
                 edited_date DATETIME DEFAULT NULL,
                 edited_by INT DEFAULT NULL,
-                deleted_date DATETIME DEFAULT NULL,
-                deleted_by INT DEFAULT NULL,
                 INDEX IDX_E5A8C463C4663E4 (page_id),
                 INDEX IDX_E5A8C463727ACA70 (parent_id),
                 INDEX IDX_E5A8C463DE12AB56 (created_by),
                 INDEX IDX_E5A8C463D6A509BC (edited_by),
-                INDEX IDX_E5A8C4631F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
-        $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463C4663E4 FOREIGN KEY (page_id) REFERENCES pages (id)');
+        $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463C4663E4 FOREIGN KEY (page_id) REFERENCES pages (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463727ACA70 FOREIGN KEY (parent_id) REFERENCES page_components (id) ON DELETE CASCADE');
         $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463DE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C463D6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
-        $this->addSql('ALTER TABLE page_components ADD CONSTRAINT FK_E5A8C4631F6FA0AF FOREIGN KEY (deleted_by) REFERENCES users (id) ON DELETE SET NULL');
 
         $this->addSql(<<<'SQL'
             CREATE TABLE menus (
@@ -138,17 +125,13 @@ final class Version20260904120000 extends AbstractMigration
                 created_by INT DEFAULT NULL,
                 edited_date DATETIME DEFAULT NULL,
                 edited_by INT DEFAULT NULL,
-                deleted_date DATETIME DEFAULT NULL,
-                deleted_by INT DEFAULT NULL,
                 INDEX IDX_727508CFDE12AB56 (created_by),
                 INDEX IDX_727508CFD6A509BC (edited_by),
-                INDEX IDX_727508CF1F6FA0AF (deleted_by),
                 PRIMARY KEY (id)
             ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
             SQL);
         $this->addSql('ALTER TABLE menus ADD CONSTRAINT FK_727508CFDE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
         $this->addSql('ALTER TABLE menus ADD CONSTRAINT FK_727508CFD6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
-        $this->addSql('ALTER TABLE menus ADD CONSTRAINT FK_727508CF1F6FA0AF FOREIGN KEY (deleted_by) REFERENCES users (id) ON DELETE SET NULL');
 
         $this->addSql(<<<'SQL'
             CREATE TABLE layout_block_menus (
@@ -173,6 +156,25 @@ final class Version20260904120000 extends AbstractMigration
             SQL);
 
         $this->addSql(<<<'SQL'
+            CREATE TABLE uploads (
+                id INT AUTO_INCREMENT NOT NULL,
+                path VARCHAR(500) NOT NULL,
+                original_filename VARCHAR(255) NOT NULL,
+                mime_type VARCHAR(100) NOT NULL,
+                size INT NOT NULL,
+                created_date DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                created_by INT DEFAULT NULL,
+                edited_date DATETIME DEFAULT NULL,
+                edited_by INT DEFAULT NULL,
+                INDEX IDX_96117F18DE12AB56 (created_by),
+                INDEX IDX_96117F18D6A509BC (edited_by),
+                PRIMARY KEY (id)
+            ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB
+            SQL);
+        $this->addSql('ALTER TABLE uploads ADD CONSTRAINT FK_96117F18DE12AB56 FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE SET NULL');
+        $this->addSql('ALTER TABLE uploads ADD CONSTRAINT FK_96117F18D6A509BC FOREIGN KEY (edited_by) REFERENCES users (id) ON DELETE SET NULL');
+
+        $this->addSql(<<<'SQL'
             INSERT INTO users (username, first_name, last_name, email, phone, password, role, is_active) VALUES
             ('admin', 'Hlavní', 'Administrátor', 'admin@example.com', '+420123456789', '$2y$10$TDs.8sre4gMLG/6rGBPDJus6Wy.huo0TWUUaEGxdDLktprZOeF9hu', 'admin', 1)
             SQL);
@@ -180,6 +182,7 @@ final class Version20260904120000 extends AbstractMigration
 
     public function down(Schema $schema): void
     {
+        $this->addSql('DROP TABLE IF EXISTS uploads');
         $this->addSql('DROP TABLE IF EXISTS layout_block_menus');
         $this->addSql('DROP TABLE IF EXISTS menus');
         $this->addSql('DROP TABLE IF EXISTS page_components');

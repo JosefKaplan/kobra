@@ -2,8 +2,8 @@
 
 {define renderComponent, App\Entity\PageComponent $component}
 	{var $componentContent = $component->getContent()}
-	{var $spacingTopLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingTop() ?? ''] ?? null}
-	{var $spacingBottomLength = \App\Entity\PageComponent::SPACING_VALUES[$component->getSpacingBottom() ?? ''] ?? null}
+	{var $spacingTopLength = \App\Entity\PageComponent::SPACING_OPTIONS[$component->getSpacingTop() ?? '']['css'] ?? null}
+	{var $spacingBottomLength = \App\Entity\PageComponent::SPACING_OPTIONS[$component->getSpacingBottom() ?? '']['css'] ?? null}
 	{var $spacingStyle = trim(
 		($spacingTopLength !== null ? 'margin-top: ' . $spacingTopLength . '; ' : '')
 		. ($spacingBottomLength !== null ? 'margin-bottom: ' . $spacingBottomLength : '')
@@ -48,8 +48,8 @@
 		</div>
 
 		{var $tileList = array_values($tiles)}
-		{foreach $tileList as $i => $tile}
-			{include masonryItemModal, component: $tile, prev: $tileList[($i - 1 + count($tileList)) % count($tileList)], next: $tileList[($i + 1) % count($tileList)]}
+		{foreach $tileList as $tile}
+			{include masonryItemModal, component: $tile, prev: $tileList[($iterator->counter0 - 1 + count($tileList)) % count($tileList)], next: $tileList[($iterator->counter0 + 1) % count($tileList)]}
 		{/foreach}
 
 	{case 'masonry_item'}
@@ -59,7 +59,7 @@
 		<button n:if="$mainImage !== ''" type="button" class="page-masonry-item ratio ratio-1x1"
 		        data-bs-toggle="modal" data-bs-target="#{$modalId}"
 		        aria-label="{$heading !== '' ? $heading : 'Zobrazit detail'}">
-			<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+			<img src="{$mainImage|thumb}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 		</button>
 
 	{case 'columns'}
@@ -108,7 +108,7 @@
 		{var $addresses = array_filter([
 			['title' => 'Studio', 'icon' => 'geo-alt', 'text' => trim($componentContent['studio_address'] ?? '')],
 			['title' => 'Sídlo a fakturační adresa', 'icon' => 'buildings', 'text' => trim($componentContent['billing_address'] ?? '')],
-		], fn ($a) => $a['text'] !== '')}
+		], fn (array $address): bool => $address['text'] !== '')}
 		{var $company = trim($componentContent['company'] ?? '')}
 		{var $companyIds = implode(' · ', array_filter([
 			trim($componentContent['ico'] ?? '') !== '' ? 'IČ ' . trim($componentContent['ico']) : '',
@@ -195,7 +195,7 @@
 					</button>
 					<div class="book-body" style="--gallery-cols: {$galleryCols}">
 						<div class="book-main">
-							<img src="{$mainImage}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
+							<img src="{$mainImage}" data-full="{$mainImage|checkUrl}" data-thumb="{$mainImage|thumb|checkUrl}" alt="{$componentContent['main_image_alt'] ?? ''}" loading="lazy">
 							<div n:if="$heading !== '' || $text !== ''" class="book-caption">
 								<h3 n:if="$heading !== ''" class="h5">{$heading}</h3>
 								<div n:if="$text !== ''" class="rich-text">{$text|noescape}</div>
@@ -210,7 +210,7 @@
 										{* a click swaps the photo with the main one (assets/front/masonry.js); --i is the admin order —
 										   it drives the staggered fade-in and, on phones, the grid order (_layout.scss) *}
 										<button type="button" class="book-thumb" aria-label="Zobrazit ve velkém" style="--i: {$iterator->counter0}">
-											<img src="{$g['image_url']}" alt="{$g['alt'] ?? ''}" loading="lazy">
+											<img src="{$g['image_url']|thumb}" data-full="{$g['image_url']|checkUrl}" data-thumb="{$g['image_url']|thumb|checkUrl}" alt="{$g['alt'] ?? ''}" loading="lazy">
 										</button>
 									{/foreach}
 								</div>

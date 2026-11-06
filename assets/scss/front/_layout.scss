@@ -100,14 +100,6 @@ $wide-width: calc(100vw - 2 * (#{$panel-inset} + #{$wide-gutter}));
   }
 }
 
-.auth-wrap {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 0;
-  min-height: 60vh;
-}
-
 .page-hero {
   background: linear-gradient(135deg, $hero-bg-from, $hero-bg-to);
   border: 1px solid $hero-border;

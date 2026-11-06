@@ -8,7 +8,7 @@
  * click-to-browse upload widget on top of the plain text input — the text input stays the value
  * that's actually posted (and the no-JS fallback: paste a URL directly), same as before this
  * existed. Used for any content field that holds an image URL: hero.image_url, image.url, and
- * a masonry tile's main image / gallery photos (see galleryImageRow below).
+ * a masonry tile's main image / gallery photos and a footer carousel's images (see imageListRow below).
  *}
 {define imageUploadField, string $id, string $name, string $value, string $label, string $placeholder = 'https://…', ?string $hint = null}
 	<div class="mb-3" data-image-upload data-upload-endpoint="{link uploadImage!}">
@@ -65,11 +65,6 @@
 			</div>
 		</div>
 	</div>
-{/define}
-
-{* Masonry gallery photo — the imageListRow specialisation used by the masonry_item form below. *}
-{define galleryImageRow, string $index, array $item, int $componentId}
-	{include imageListRow, field: 'gallery', idPrefix: 'cmp-' . $componentId . '-gallery', index: $index, item: $item}
 {/define}
 
 {*
@@ -224,7 +219,7 @@
 				<div class="col-sm-6">
 					<label for="cmp-{$componentId}-level" class="form-label">Úroveň</label>
 					<select id="cmp-{$componentId}-level" name="level" class="form-select">
-						{foreach ['h2' => 'H2 – Hlavní nadpis', 'h3' => 'H3 – Podnadpis', 'h4' => 'H4 – Menší nadpis', 'h5' => 'H5 – Malý nadpis'] as $val => $label}
+						{foreach \App\Modules\Admin\Page\PagePresenter::HEADING_LEVELS as $val => $label}
 							<option value="{$val}" {if ($componentContent['level'] ?? 'h2') === $val}selected{/if}>{$label}</option>
 						{/foreach}
 					</select>
@@ -232,7 +227,7 @@
 				<div class="col-sm-6">
 					<label for="cmp-{$componentId}-align" class="form-label">Zarovnání</label>
 					<select id="cmp-{$componentId}-align" name="align" class="form-select">
-						{foreach ['start' => 'Vlevo', 'center' => 'Na střed', 'end' => 'Vpravo'] as $val => $label}
+						{foreach \App\Modules\Admin\Page\PagePresenter::HEADING_ALIGNMENTS as $val => $label}
 							<option value="{$val}" {if ($componentContent['align'] ?? 'start') === $val}selected{/if}>{$label}</option>
 						{/foreach}
 					</select>
@@ -342,7 +337,7 @@
 				<div class="col-sm-4">
 					<label for="cmp-{$componentId}-button_style" class="form-label">Styl tlačítka</label>
 					<select id="cmp-{$componentId}-button_style" name="button_style" class="form-select">
-						{foreach ['primary' => 'Primary', 'secondary' => 'Secondary', 'outline-primary' => 'Outline Primary', 'outline-secondary' => 'Outline Secondary'] as $val => $label}
+						{foreach \App\Modules\Admin\Page\PagePresenter::BUTTON_STYLES as $val => $label}
 							<option value="{$val}" {if ($componentContent['button_style'] ?? 'primary') === $val}selected{/if}>{$label}</option>
 						{/foreach}
 					</select>
@@ -461,16 +456,16 @@
 			<div n:if="$hasSpacing" class="col-sm-4">
 				<label for="cmp-{$componentId}-spacingTop" class="form-label mb-0 small">Mezera nad blokem</label>
 				<select id="cmp-{$componentId}-spacingTop" name="spacingTop" class="form-select form-select-sm">
-					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
-						<option value="{$val}" {if ($component->getSpacingTop() ?? 'sm') === $val}selected{/if}>{$label}</option>
+					{foreach \App\Entity\PageComponent::SPACING_OPTIONS as $val => $option}
+						<option value="{$val}" {if ($component->getSpacingTop() ?? 'sm') === $val}selected{/if}>{$option['label']}</option>
 					{/foreach}
 				</select>
 			</div>
 			<div n:if="$hasSpacing" class="col-sm-4">
 				<label for="cmp-{$componentId}-spacingBottom" class="form-label mb-0 small">Mezera pod blokem</label>
 				<select id="cmp-{$componentId}-spacingBottom" name="spacingBottom" class="form-select form-select-sm">
-					{foreach ['none' => 'Žádná', 'sm' => 'Malá', 'lg' => 'Velká', 'xl' => 'Extra velká'] as $val => $label}
-						<option value="{$val}" {if ($component->getSpacingBottom() ?? 'sm') === $val}selected{/if}>{$label}</option>
+					{foreach \App\Entity\PageComponent::SPACING_OPTIONS as $val => $option}
+						<option value="{$val}" {if ($component->getSpacingBottom() ?? 'sm') === $val}selected{/if}>{$option['label']}</option>
 					{/foreach}
 				</select>
 			</div>

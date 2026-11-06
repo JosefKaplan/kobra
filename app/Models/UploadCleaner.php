@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Helpers\DateShardedFiles;
+use App\Helpers\Thumbnailer;
 use Doctrine\DBAL\Connection;
-use Tracy\Debugger;
-use Tracy\ILogger;
 
 /**
  * Keeps www/uploads/ and the `uploads` table in step with the content: an uploaded image nothing
@@ -23,7 +23,7 @@ final class UploadCleaner
 	/** A younger unreferenced upload may still sit in a form that hasn't been saved yet. */
 	public const SWEEP_MIN_AGE = 24 * 3600;
 
-	private const SWEPT_AT_SETTING = 'uploads_swept_at';
+	public const SWEPT_AT_SETTING = 'uploads_swept_at';
 
 	/** What ImageUploader creates: /uploads/<year>/<month>/<name>.<ext> — captures the part under www/uploads/. */
 	private const PATH_PATTERN = '~/uploads/(\d{4}/\d{2}/[\w-][\w.-]*\.(?:jpe?g|png|gif|webp))~i';
@@ -32,6 +32,7 @@ final class UploadCleaner
 		private readonly string $uploadsDir,
 		private readonly Connection $connection,
 		private readonly SettingsManager $settingsManager,
+		private readonly Thumbnailer $thumbnailer,
 	) {
 	}
 
@@ -53,18 +54,22 @@ final class UploadCleaner
 	}
 
 	/**
-	 * Deletes those of the given uploads nothing refers to any more.
+	 * Deletes those of the given uploads nothing refers to any more; returns how many really went
+	 * (a file the server isn't allowed to delete doesn't count).
 	 *
 	 * @param list<string> $paths
 	 */
-	public function release(array $paths): void
+	public function release(array $paths): int
 	{
 		$referenced = $this->referencedPaths();
+		$deleted = 0;
 		foreach (array_unique($paths) as $path) {
-			if (!isset($referenced[$path])) {
-				$this->delete($path);
+			if (!isset($referenced[$path]) && $this->delete($path)) {
+				$deleted++;
 			}
 		}
+
+		return $deleted;
 	}
 
 	/** sweep(), at most once a day. */
@@ -90,21 +95,21 @@ final class UploadCleaner
 		/** @var array<string, string> $rows path => created_date */
 		$rows = $this->connection->fetchAllKeyValue('SELECT path, created_date FROM uploads');
 		foreach ($rows as $path => $createdDate) {
-			if (!isset($referenced[$path]) && strtotime($createdDate) < $cutoff) {
-				$this->delete((string) $path);
+			if (!isset($referenced[$path]) && strtotime($createdDate) < $cutoff && $this->delete((string) $path)) {
 				$deleted++;
 			}
 		}
 
-		foreach (glob($this->uploadsDir . '/[0-9][0-9][0-9][0-9]/[0-9][0-9]/*') ?: [] as $file) {
-			$path = substr($file, strlen($this->uploadsDir) + 1);
+		foreach (DateShardedFiles::list($this->uploadsDir) as $path) {
+			$file = $this->uploadsDir . '/' . $path;
 			if (!isset($rows[$path]) && !isset($referenced[$path]) && self::isUploadPath($path)
-				&& is_file($file) && filemtime($file) < $cutoff
+				&& is_file($file) && filemtime($file) < $cutoff && $this->delete($path)
 			) {
-				$this->delete($path);
 				$deleted++;
 			}
 		}
+
+		$this->thumbnailer->deleteOrphans();
 
 		return $deleted;
 	}
@@ -124,25 +129,27 @@ final class UploadCleaner
 		return $referenced;
 	}
 
-	private function delete(string $path): void
+	/**
+	 * The thumbnail first, then the file, the row only once both are gone. False when either stays on
+	 * disk (no permission to delete it — e.g. owned by the FTP user); the row stays then too, so the
+	 * image browser still lists it. Thumbnail first because it's the disposable one: one left behind
+	 * with its original gone would be on no screen, while an original left without one just shows as is.
+	 */
+	private function delete(string $path): bool
 	{
-		$this->connection->executeStatement('DELETE FROM uploads WHERE path = ?', [$path]);
-		if (!self::isUploadPath($path)) {
-			return; // never touch the filesystem outside what ImageUploader creates
+		// never touch the filesystem outside what ImageUploader creates
+		if (self::isUploadPath($path)
+			&& (!$this->thumbnailer->delete($path) || !DateShardedFiles::delete($this->uploadsDir, $path))
+		) {
+			return false;
 		}
 
-		$file = $this->uploadsDir . '/' . $path;
-		if (is_file($file) && !@unlink($file)) {
-			Debugger::log("Nepodařilo se smazat nahraný soubor $file", ILogger::WARNING);
-			return;
-		}
-		// drop the month, then the year directory once empty (rmdir refuses non-empty ones)
-		if (@rmdir(dirname($file))) {
-			@rmdir(dirname($file, 2));
-		}
+		$this->connection->executeStatement('DELETE FROM uploads WHERE path = ?', [$path]);
+
+		return true;
 	}
 
-	private static function isUploadPath(string $path): bool
+	public static function isUploadPath(string $path): bool
 	{
 		return self::pathsIn('/uploads/' . $path) === [$path];
 	}

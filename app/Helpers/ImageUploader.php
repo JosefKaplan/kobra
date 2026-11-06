@@ -22,6 +22,7 @@ class ImageUploader
     public function __construct(
         private readonly string $uploadsDir,
         private readonly UploadManager $uploadManager,
+        private readonly Thumbnailer $thumbnailer,
     ) {
     }
 
@@ -41,12 +42,12 @@ class ImageUploader
             throw new ImageUploadException('Soubor je příliš velký (max ' . (int) (self::MAX_SIZE / 1024 / 1024) . ' MB).');
         }
 
-        $imageInfo = @getimagesize($file->getTemporaryFile());
-        if ($imageInfo === false || !in_array($imageInfo[2], self::ALLOWED_TYPES, true)) {
+        $type = Image::detectTypeFromFile($file->getTemporaryFile());
+        if (!in_array($type, self::ALLOWED_TYPES, true)) {
             throw new ImageUploadException('Nepodporovaný formát obrázku. Povoleno: JPG, PNG, GIF, WEBP.');
         }
 
-        $extension = Image::typeToExtension($imageInfo[2]);
+        $extension = Image::typeToExtension($type);
         $baseName = Strings::truncate(pathinfo($file->getSanitizedName(), PATHINFO_FILENAME), self::MAX_BASENAME_LENGTH, '');
         $filename = ($baseName !== '' ? $baseName : 'obrazek') . '-' . Random::generate(8, '0-9a-f') . '.' . $extension;
         $relativePath = date('Y/m') . '/' . $filename;
@@ -61,7 +62,7 @@ class ImageUploader
             $upload = new Upload();
             $upload->setPath($relativePath);
             $upload->setOriginalFilename(Strings::truncate($file->getUntrustedName(), 255, ''));
-            $upload->setMimeType(Image::typeToMimeType($imageInfo[2]));
+            $upload->setMimeType(Image::typeToMimeType($type));
             $upload->setSize($file->getSize());
             $upload->markCreated($uploadedBy);
             $this->uploadManager->save($upload);
@@ -69,6 +70,8 @@ class ImageUploader
             @unlink($this->uploadsDir . '/' . $relativePath);
             throw new ImageUploadException('Uložení souboru se nezdařilo.', previous: $e);
         }
+
+        $this->thumbnailer->generate($relativePath);
 
         return $upload;
     }

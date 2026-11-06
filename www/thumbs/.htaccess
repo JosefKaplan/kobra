@@ -1,0 +1,9 @@
+# Defense in depth: this directory only ever holds WebP thumbnails written by
+# App\Helpers\Thumbnailer, but it's writable by the web server (and FTP), so in case
+# anything else ever lands here, make sure it can't be executed as a script.
+<IfModule mod_php.c>
+	php_flag engine off
+</IfModule>
+<FilesMatch "\.ph(p[3457]?|t|tml)$">
+	Require all denied
+</FilesMatch>
